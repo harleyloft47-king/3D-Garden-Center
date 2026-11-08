@@ -1,0 +1,31 @@
+# 3D Garden Center
+
+![3D Garden Center](splash.jpg)
+
+A 3D gardening game you play in your web browser, on a phone, tablet or computer. Grow plants in a glass greenhouse, raise fruit trees in the orchard, and sell what you grow to customers at your own flower stand.
+
+## Play
+
+Open `index.html` in a browser. Nothing to install. The game loads its 3D engine ([three.js](https://threejs.org) r128) and fonts from the internet, so you need a connection the first time it opens. Your progress saves in your browser.
+
+## What's in the game
+
+- **87 plants to unlock** across 47 levels: 47 flowers (including fly-eating carnivorous plants), 20 cacti that only need water once, 10 fruit plants and 10 fruit trees
+- **Greenhouse** with up to 12 plots, expanded three times from the Seed Shop
+- **Orchard** with up to 12 fruit trees that keep fruiting after every picking
+- **Upgrades:** drip irrigation, sprinklers, grow lights, compost bins, orchard drip line, beehives
+- **Workers you can hire and customize:** a gardener who harvests, waters, plants and buys seeds for customers, and a shopkeeper who sells for you
+- **Seed Shop and Flower Shop** stalls where the shopkeepers fetch from their shelves
+- First-person and third-person views, and a pause menu
+
+## Controls
+
+| | Phone and tablet | Computer |
+|---|---|---|
+| Walk | Joystick (bottom left) | W A S D |
+| Look around | Drag the screen | Move the mouse (click the game first) |
+| Zoom | Pinch | Scroll wheel |
+| Plant, water, harvest, shop | Pink button | Click, E or Space |
+| Pick a seed | Tap it in the seed tray | 1 to 9 |
+| Pause | II button | Esc |
+| First / third person | Pause menu | Pause menu or V |
