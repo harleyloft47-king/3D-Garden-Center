@@ -366,7 +366,11 @@ const itemOf=t=>SEEDS[t].item||SEEDS[t].name;
 const plural=(n,q)=>q===1||n.endsWith('s')?n:/(ch|sh)$/.test(n)?n+'es':/[^aeiou]y$/.test(n)?n.slice(0,-1)+'ies':n+'s';
 const isFruit=t=>SEEDS[t].cat==='fruit'||SEEDS[t].cat==='tree';
 const CATS=[['cactus','Cacti · water once, then they grow on their own'],['classic','Garden classics'],['exotic','Exotic greenhouse'],['carnivore','Carnivorous plants · they eat flies'],['fruit','Fruit plants · grow in your plots'],['tree','Fruit trees · plant these in the orchard']];
+SEEDS.honey={name:'Honey',item:'Honey jar',product:true,cat:'product',lvl:16,cost:0,sell:60,grow:1,xp:5,petal:'#f2a91a',core:'#ffd34d',style:'cactus',fl:'cup',r:.3,h:.3};
 const TYPES=Object.keys(SEEDS);
+const PLANTS=TYPES.filter(t=>!SEEDS[t].product);
+const HONEY_MAX=5;                                   // jars a hive can hold
+const honeyRate=()=>1/90*(1+.15*S.trees.filter(s=>s&&s.st>=2).length);   // jars per second per hive; more grown trees, faster honey
 const YIELD=2;
 const plotYield=()=>S.up&&S.up.compost?3:YIELD;                       // compost bins: 3 per harvest
 const treeYield=d=>d.yield+(S.up&&S.up.beehives?2:0);                  // beehives: 6 per picking
@@ -380,7 +384,7 @@ const UPGRADES={
   compost:{name:'Compost bins',icon:'♻',group:'gh',lvl:15,cost:2000,desc:'Rich, dark compost soil in every plot. Each greenhouse harvest gives 3 instead of 2.'},
   orchardExpand:{name:'Orchard expansion',icon:'⊕',group:'orch',lvl:12,cost:1500,desc:'Clears a new row at the far end of the orchard with 2 more tree spots (6 → 8).'},
   orchardGrand:{name:'Grand orchard',icon:'❀',group:'orch',lvl:20,cost:6000,needs:'orchardExpand',desc:'Clears two more long rows past the end of the orchard: 4 more tree spots, for 12 fruit trees in all.'},
-  beehives:{name:'Beehives',icon:'⬡',group:'orch',lvl:16,cost:2200,desc:'Two hives of bees pollinate your trees. Every picking gives 6 fruit instead of 4, and fruit grows back 25% faster.'},
+  beehives:{name:'Beehives',icon:'⬡',group:'orch',lvl:16,cost:2200,desc:'Two hives of bees pollinate your trees. Every picking gives 6 fruit instead of 4, fruit grows back 25% faster, and the hives fill with honey you can collect and sell.'},
 };
 const EXPANSIONS=[200,500,1000];          // cost of greenhouse expansion 1, 2 and 3
 const BAY=3.3;                               // each expansion adds this much greenhouse length
@@ -407,10 +411,10 @@ const NAMES=['Mira','Theo','June','Arlo','Ivy','Hank','Rosa','Omar','Pip','Lena'
 /* ---------- state ---------- */
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 const zeros=()=>Object.fromEntries(TYPES.map(t=>[t,0]));
-const fresh=()=>({coins:15,xp:0,seeds:Object.assign(zeros(),{daisy:4}),flowers:zeros(),plots:Array(6).fill(null),trees:Array(6).fill(null),sel:'daisy',customers:[],up:{},seen:false,gh:0,worker:false,workerReplant:true,memo:[],looks:{},manager:false,managerOn:true});
+const fresh=()=>({coins:15,xp:0,seeds:Object.assign(zeros(),{daisy:4}),flowers:zeros(),plots:Array(6).fill(null),trees:Array(6).fill(null),honey:[0,0],sel:'daisy',customers:[],up:{},seen:false,gh:0,worker:false,workerReplant:true,memo:[],looks:{},manager:false,managerOn:true});
 const KEY='glasshouse-garden-v2';
 let S=fresh();
-try{const raw=localStorage.getItem(KEY);if(raw){const d=JSON.parse(raw);S=Object.assign(fresh(),d);S.seeds=Object.assign(zeros(),d.seeds);S.flowers=Object.assign(zeros(),d.flowers);S.up=d.up||{};S.customers=(S.customers||[]).filter(o=>SEEDS[o.t]);S.gh=clamp(d.gh|0,0,3);S.looks=d.looks&&typeof d.looks==='object'?d.looks:{};S.trees=(Array.isArray(d.trees)?d.trees:[]).slice(0,treeCount()).map(p=>p&&SEEDS[p.t]&&SEEDS[p.t].tree?p:null);while(S.trees.length<treeCount())S.trees.push(null);S.memo=Array.isArray(d.memo)?d.memo:[];S.plots=(S.plots||[]).slice(0,plotCount(S.gh)).map(p=>p&&SEEDS[p.t]?p:null);while(S.plots.length<plotCount(S.gh))S.plots.push(null)}}catch(e){}
+try{const raw=localStorage.getItem(KEY);if(raw){const d=JSON.parse(raw);d.honey=Array.isArray(d.honey)?d.honey.slice(0,2).map(v=>Math.max(0,Math.min(HONEY_MAX,+v||0))):[0,0];S=Object.assign(fresh(),d);S.seeds=Object.assign(zeros(),d.seeds);S.flowers=Object.assign(zeros(),d.flowers);S.up=d.up||{};S.customers=(S.customers||[]).filter(o=>SEEDS[o.t]);S.gh=clamp(d.gh|0,0,3);S.looks=d.looks&&typeof d.looks==='object'?d.looks:{};S.trees=(Array.isArray(d.trees)?d.trees:[]).slice(0,treeCount()).map(p=>p&&SEEDS[p.t]&&SEEDS[p.t].tree?p:null);while(S.trees.length<treeCount())S.trees.push(null);S.memo=Array.isArray(d.memo)?d.memo:[];S.plots=(S.plots||[]).slice(0,plotCount(S.gh)).map(p=>p&&SEEDS[p.t]?p:null);while(S.plots.length<plotCount(S.gh))S.plots.push(null)}}catch(e){}
 applyNames();
 const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}};
 const level=()=>levelOf(S.xp);
@@ -1088,6 +1092,11 @@ fitOrchard();   // a saved game with the orchard expansion gets its extra row st
  orchDripG.add(mesh(BOX,dripTipM,.24,.32,.2,10.55,.16,3.25));orchDripG.add(mesh(CYL,mat('#c9a24a',{metalness:.6,roughness:.35}),.05,.12,.05,10.55,.38,3.25,false));}
 // ---- beehives on the east edge of the orchard, with bees that visit the trees ----
 const HIVES=[[16.3,-5.25],[16.3,-9.75]];
+const hiveParts=[];
+const honeyIconMat=new THREE.SpriteMaterial({map:spriteTex((x)=>{x.fillStyle='#fff';x.beginPath();x.arc(64,64,58,0,7);x.fill();
+  x.fillStyle='#f2a91a';x.beginPath();x.moveTo(36,52);x.quadraticCurveTo(30,100,64,104);x.quadraticCurveTo(98,100,92,52);x.closePath();x.fill();
+  x.fillStyle='#c8641a';x.fillRect(38,40,52,14);x.fillStyle='#fff3c0';x.beginPath();x.ellipse(52,70,7,12,0,0,7);x.fill();
+  x.fillStyle='#f2a91a';x.beginPath();x.moveTo(74,54);x.quadraticCurveTo(80,66,74,72);x.quadraticCurveTo(68,66,74,54);x.fill()}),depthTest:false});
 const hivesG=new THREE.Group();scene.add(hivesG);
 HIVES.forEach(([x,z])=>{const g=new THREE.Group();g.position.set(x,0,z);g.rotation.y=-Math.PI/2;hivesG.add(g);
   const wood=mat('#8e6440'),white=mat('#f4f1e8'),yel=mat('#ffd34d');
@@ -1095,15 +1104,31 @@ HIVES.forEach(([x,z])=>{const g=new THREE.Group();g.position.set(x,0,z);g.rotati
   g.add(mesh(BOX,wood,.8,.06,.65,0,.42,0));
   [0,1].forEach(k=>g.add(mesh(BOX,k?yel:white,.72,.32,.58,0,.62+k*.33,0)));
   g.add(mesh(BOX,white,.84,.07,.7,0,.98,0));g.add(mesh(BOX,mat('#3a2a1a'),.3,.04,.02,0,.5,.3,false));
-  g.add(mesh(BOX,wood,.4,.03,.2,0,.47,.38,false))});
+  g.add(mesh(BOX,wood,.4,.03,.2,0,.47,.38,false));
+  const drip=new THREE.Group();drip.visible=false;g.add(drip);const hm=mat('#f2a91a',{roughness:.2,emissive:C('#5a3a00')});
+  [[-.1,.04],[0,.07],[.11,.05]].forEach(([x,l])=>{drip.add(mesh(SPH_LO,hm,.035,l+.02,.02,x,.49-l,.31,false))});
+  const icon=new THREE.Sprite(honeyIconMat);icon.scale.set(.6,.6,.6);icon.position.y=1.65;icon.renderOrder=10;icon.visible=false;g.add(icon);
+  const ring=mesh(RING,mat('#ffc947',{emissive:C('#5a4a00')}),.75,.75,.75,0,.04,0,false);ring.rotation.x=Math.PI/2;ring.visible=false;g.add(ring);
+  hiveParts.push({drip,icon,ring,x,z})});
 const bees=[];const beeBody=mat('#ffc61a'),beeBand=mat('#1d1d1d'),beeWing=mat('#ffffff',{transparent:true,opacity:.6});
 for(let k=0;k<14;k++){const g=new THREE.Group();g.add(mesh(SPH_LO,beeBody,.045,.04,.065,0,0,0,false));g.add(mesh(SPH_LO,beeBand,.047,.042,.018,0,0,-.012,false));g.add(mesh(SPH_LO,beeBand,.04,.036,.015,0,0,.03,false));
   const wings=[-1,1].map(sd=>{const w=mesh(SPH_LO,beeWing,.05,.004,.025,sd*.045,.035,0,false);g.add(w);return[w,sd]});
   const[hx,hz]=HIVES[k%2];g.position.set(hx,.8,hz);hivesG.add(g);bees.push({g,wings,tgt:null,t:Math.random()*3,ph:Math.random()*9})}
 const btmp=new THREE.Vector3();
-function updateBees(dt,now){if(!S.up.beehives)return;
+let beeChase=0;
+function updateHoney(dt,now){
+  hiveParts.forEach((H,i)=>{if(S.up.beehives)S.honey[i]=Math.min(HONEY_MAX,(S.honey[i]||0)+honeyRate()*dt);
+    const jars=Math.floor(S.honey[i]||0);H.drip.visible=jars>=1;H.icon.visible=jars>=1;
+    if(H.icon.visible)H.icon.position.y=1.65+Math.sin(now/300+i)*.05;
+    H.ring.visible=!!(target&&target.k==='hive'&&target.i===i)})}
+function collectHoney(i){const jars=Math.floor(S.honey[i]||0);if(jars<1)return;
+  S.honey[i]-=jars;S.flowers.honey+=jars;chime();toast(`+${jars} ${plural('Honey jar',jars)} · +${jars*SEEDS.honey.xp} XP`);addXP(jars*SEEDS.honey.xp);
+  const[hx,hz]=HIVES[i];for(let k=0;k<18;k++)sparkle.emit(hx+(Math.random()-.5),1.1,hz+(Math.random()-.5),(Math.random()-.5)*1.2,1.5+Math.random()*2,(Math.random()-.5)*1.2,1,5);
+  beeChase=2.2;for(let k=0;k<3;k++)setTimeout(()=>blip(220+k*30,.12,'sawtooth'),k*90);renderHUD();save()}
+function updateBees(dt,now){if(!S.up.beehives)return;beeChase-=dt;
   bees.forEach((B,k)=>{B.t-=dt;
-    if(!B.tgt||B.t<=0){const grown=orch.map((O,i)=>i).filter(i=>S.trees[i]&&orch[i].tree);
+    if(beeChase>0&&k<5){const p=player.position;B.tgt=[p.x+Math.cos(now/200+k*1.3)*.5,1.4+Math.sin(now/150+k)*.3,p.z+Math.sin(now/200+k*1.3)*.5];B.t=.3}
+    else if(!B.tgt||B.t<=0){const grown=orch.map((O,i)=>i).filter(i=>S.trees[i]&&orch[i].tree);
       if(grown.length&&Math.random()<.8){const O=orch[grown[(Math.random()*grown.length)|0]],tr=O.tree,h=tr.userData.top*tr.scale.x;
         B.tgt=[O.x+(Math.random()-.5)*1.4,Math.max(.6,h-.8+(Math.random()-.5)*.6),O.z+(Math.random()-.5)*1.4]}
       else{const[hx,hz]=HIVES[k%2];B.tgt=[hx+(Math.random()-.5)*.6,.9+Math.random()*.4,hz+(Math.random()-.5)*.6]}
@@ -1278,7 +1303,7 @@ function routeToSeedShop(){routeTo(DOOR_IN[0],DOOR_IN[1]);worker.path.push(DOOR_
 const canBuy=t=>S.workerBuy!==false&&S.coins-SEEDS[t].cost>=WORKER_RESERVE;
 const growingCount=t=>S.plots.filter(p=>p&&p.t===t).length*plotYield();
 // what a waiting customer wants that you don't have in your basket or growing yet
-function wanted(){const need={};S.customers.forEach(o=>{const d=SEEDS[o.t];if(d&&!d.tree&&unlocked(o.t))need[o.t]=(need[o.t]||0)+o.qty});
+function wanted(){const need={};S.customers.forEach(o=>{const d=SEEDS[o.t];if(d&&!d.tree&&!d.product&&unlocked(o.t))need[o.t]=(need[o.t]||0)+o.qty});
   const list=[];for(const t in need){const short=need[t]-S.flowers[t]-growingCount(t);if(short>0)list.push([t,short])}
   return list.sort((a,b)=>b[1]-a[1])}
 // what Basil would plant in an empty plot: customer requests first, then your usual flower for that plot
@@ -1425,16 +1450,18 @@ function spawnEnt(o,instant){
   addBubble(e);scene.add(m);ents.push(e);
 }
 function newCustomer(){
-  const open=TYPES.filter(unlocked);
+  const open=PLANTS.filter(unlocked);
   const growing=open.filter(t=>S.flowers[t]>0||S.plots.some(p=>p&&p.t===t));
   const pool=growing.length&&Math.random()<.75?growing:open;
-  const t=pick(pool);
+  const t=S.up.beehives&&unlocked('honey')&&Math.random()<.12?'honey':pick(pool);   // about 1 in 8 customers wants honey
   const qty=1+(Math.random()<.45?1:0)+(Math.random()<.15?1:0);
   const tip=Math.max(1,Math.round(SEEDS[t].sell*qty*(.1+Math.random()*.35)));
   return {t,qty,pay:SEEDS[t].sell*qty+tip,name:pick(NAMES),
     look:{shirt:pick(SHIRTS),pants:pick(PANTS),skin:pick(SKINS),hair:pick(HAIRC),hairStyle:pick(['short','bun','long','pony','curly','short','bald']),beard:Math.random()<.15}};
 }
 function makeBouquet(t){const g=new THREE.Group();
+  if(t==='honey'){g.add(mesh(CYL,mat('#f2a91a',{roughness:.15,transparent:true,opacity:.92}),.06,.11,.06,0,0,0));g.add(mesh(CYL,mat('#c8641a'),.065,.03,.065,0,.07,0));
+    g.add(mesh(BOX,mat('#fff3c0'),.07,.05,.005,0,0,.061,false));g.rotation.x=Math.PI;return g}
   if(SEEDS[t].cat==='cactus'){ // a little terracotta pot
     const d=SEEDS[t];g.add(mesh(TAPER,mat('#c96a3e'),.08,.1,.08,0,-.03,0));g.add(mesh(CYL,mat('#5a3b22'),.07,.01,.07,0,.02,0,false));
     g.add(mesh(ribGeo('s',d.ribs||10,.1),cactusSkin(d),.06,.07,.06,0,.08,0));const f=cFlower(d.fl==='trumpet'?'cup':d.fl,d.petal,.5);f.position.y=.15;g.add(f);
@@ -1601,7 +1628,7 @@ const fanfare=()=>[523,659,784,1047,784,1047].forEach((f,i)=>setTimeout(()=>blip
 function addXP(n){
   const before=level();S.xp+=n;const after=level();
   if(after>before){
-    const news=TYPES.filter(t=>SEEDS[t].lvl>before&&SEEDS[t].lvl<=after).map(t=>SEEDS[t].name);
+    const news=PLANTS.filter(t=>SEEDS[t].lvl>before&&SEEDS[t].lvl<=after).map(t=>SEEDS[t].name);
     const ups=Object.values(UPGRADES).filter(u=>u.lvl>before&&u.lvl<=after).map(u=>u.name);
     const what=[...news,...ups];
     setTimeout(()=>{toast(`Level ${after}!`+(what.length?` ${what.join(' & ')} unlocked`:''),'lvlup',2600);fanfare();
@@ -1686,9 +1713,9 @@ function openPause(){
   if(!started)return;
   if(document.pointerLockElement)try{document.exitPointerLock()}catch(_){}
   panelKind='pause';panel.hidden=false;for(const k in keys)keys[k]=false;stick.x=stick.y=0;
-  const L=level(),grown=TYPES.filter(unlocked).length,sens=S.sens||1;
+  const L=level(),grown=PLANTS.filter(unlocked).length,sens=S.sens||1;
   card.innerHTML=`<div class="cardhead"><h2>Paused</h2></div>
-  <div class="statrow"><span class="pill"><span class="badge">${L}</span>Level</span><span class="pill"><span class="coin">$</span>${S.coins}</span><span class="pill">${grown} of ${TYPES.length} plants unlocked</span></div>
+  <div class="statrow"><span class="pill"><span class="badge">${L}</span>Level</span><span class="pill"><span class="coin">$</span>${S.coins}</span><span class="pill">${grown} of ${PLANTS.length} plants unlocked</span></div>
   <p>Your plants stop growing and customers wait while the game is paused.</p>
   <button class="btn big" data-resume>Resume</button>
   <div class="pausegrid">
@@ -1806,6 +1833,7 @@ function findTarget(){
   const x=player.position.x,z=player.position.z;
   if(Math.hypot(x-SEED_SPOT.x,z-SEED_SPOT.y)<1.9)return{k:'seed'};
   if(Math.hypot(x-FLOWER_SPOT.x,z-FLOWER_SPOT.y)<1.9)return{k:'flower'};
+  if(S.up.beehives){let hi=-1,hd=1.45;HIVES.forEach(([hx,hz],i)=>{const d=Math.hypot(x-hx,z-hz);if(d<hd){hd=d;hi=i}});if(hi>=0)return{k:'hive',i:hi}}
   {let bi=-1,bdt=1.55;orch.forEach((O,i)=>{const d=Math.hypot(x-O.x,z-O.z);if(d<bdt){bdt=d;bi=i}});if(bi>=0)return{k:'tree',i:bi}}
   let best=null,bd=view==='first'?1.4:1;
   const fx=-Math.sin(yaw),fz=-Math.cos(yaw);
@@ -1818,6 +1846,8 @@ const STAGE=['sprouting','leafing out','budding'];
 function describe(){
   if(!target)return null;
   if(target.k==='seed')return{text:'Seed Shop',btn:'Shop'};
+  if(target.k==='hive'){const v=S.honey[target.i]||0,jars=Math.floor(v);
+    return jars>=1?{text:`Beehive · ${jars} ${plural('jar',jars)} of honey${jars>=HONEY_MAX?' (full)':''}`,btn:'Collect'}:{text:`Beehive · bees are making honey · ${Math.floor((v%1)*100)}%`,btn:'Wait',off:true}}
   if(target.k==='flower'){const n=S.customers.length;return{text:`Flower Shop · ${n} customer${n===1?'':'s'} waiting`,btn:'Sell'}}
   if(target.k==='tree'){const s=S.trees[target.i];
     if(!s){const t=pickSeed(true);return t?{text:`Plant ${SEEDS[t].name} (${S.seeds[t]} left)`,btn:'Plant'}:{text:'Orchard spot · buy a fruit tree at the Seed Shop',btn:'Plant',off:true}}
@@ -1840,6 +1870,7 @@ function act(){
   if(target.k==='seed'){openSeedShop();blip(500,.06);return}
   if(target.k==='flower'){openFlowerShop();blip(500,.06);return}
   if(target.k==='tree'){actTree(target.i);return}
+  if(target.k==='hive'){collectHoney(target.i);return}
   const i=target.i,s=S.plots[i];
   if(!s){const t=pickSeed();if(!t){toast('Buy seeds at the Seed Shop');return}S.seeds[t]--;S.plots[i]={t,st:0,pr:0,wet:!!S.up.drip};S.memo[i]=t;blip(330,.1,'triangle');toast(`Planted ${SEEDS[t].name}`)}
   else if(s.st>=3){S.flowers[s.t]+=plotYield();S.plots[i]=null;chime();toast(`+${plotYield()} ${plural(SEEDS[s.t].name,plotYield())} · +${SEEDS[s.t].xp} XP`);addXP(SEEDS[s.t].xp);
@@ -2020,7 +2051,7 @@ function tick(now){
   // customers
   if(started&&S.customers.length<3){custTimer-=dt;if(custTimer<=0){const o=newCustomer();S.customers.push(o);spawnEnt(o,false);custTimer=S.manager&&S.managerOn?6+Math.random()*5:10+Math.random()*8;if(panelKind==='flower')openFlowerShop()}}
   {const gl=.45+.3*Math.sin(now/650);for(const m of GLOWS)m.emissiveIntensity=gl}
-  updateEnts(dt,now);updateFlies(dt,now);updateBees(dt,now);edgeTurn(dt);if(started){updateWorker(dt);updateManager(dt)}biteCD-=dt;eatToastT-=dt;
+  updateEnts(dt,now);updateFlies(dt,now);updateBees(dt,now);updateHoney(dt,now);edgeTurn(dt);if(started){updateWorker(dt);updateManager(dt)}biteCD-=dt;eatToastT-=dt;
   {const want=S.manager&&mgr.m?mgr.m:florist;if(flowerClerk.p!==want){flowerClerk.p.position.z=CLERK_HOME;flowerClerk.p.rotation.y=0;flowerClerk.p.userData.armBusy=false;if(flowerClerk.item){flowerClerk.item.parent&&flowerClerk.item.parent.remove(flowerClerk.item);flowerClerk.item=null;flowerClerk.t=-1;if(flowerClerk.job){flowerClerk.jobs.unshift(flowerClerk.job);flowerClerk.job=null}}flowerClerk.p=want}}
   updateClerk(seedClerk,dt,now);updateClerk(flowerClerk,dt,now);
   // rescue so a player never gets stuck broke
