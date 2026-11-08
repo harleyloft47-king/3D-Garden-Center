@@ -26,6 +26,7 @@ Open `index.html` in a browser. Nothing to install. The game loads its 3D engine
 | Look around | Drag the screen | Move the mouse (click the game first) |
 | Zoom | Pinch | Scroll wheel |
 | Plant, water, harvest, shop | Pink button | Click, E or Space |
-| Pick a seed | Tap it in the seed tray | 1 to 9 |
-| Pause | II button | Esc |
+| Inventory (seeds and basket) | Inventory button (bottom right) | I |
+| Pick a seed | Tap it in the inventory | 1 to 9 |
+| Pause | II button (top right) | Esc |
 | First / third person | Pause menu | Pause menu or V |

@@ -12,7 +12,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Grandstander:wght@700;800&family=Nunito:wght@600;700;800&display=swap">
 <style>
-/* Layout: full-bleed 3D canvas, HUD floats on top — status, level and seed tray up top, joystick bottom-left, action button bottom-right. Single committed look (one sunny world). */
+/* Layout: full-bleed 3D canvas, HUD floats on top — money and level top-left, pause top-right, joystick bottom-left, inventory + action button bottom-right. Single committed look (one sunny world). */
 :root{
   --moss:#173a29;
   --leaf:#2e7a4b;
@@ -45,7 +45,7 @@
 html,body{height:100%;margin:0;overflow:hidden;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent;overscroll-behavior:none;background:#bfe4ef;color:var(--ink);font-family:var(--body);touch-action:none;-webkit-user-select:none;user-select:none}
 #game{position:fixed;inset:0;display:block;width:100%;height:100%}
 #hud{position:fixed;inset:0;pointer-events:none;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:calc(env(safe-area-inset-top,0px) + 12px) calc(env(safe-area-inset-bottom,0px) + 16px);display:flex;flex-direction:column;justify-content:space-between}
-.top{display:flex;flex-direction:column;gap:8px;align-items:flex-start}
+.top{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
 .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
 .pill{pointer-events:auto;display:inline-flex;align-items:center;gap:6px;background:var(--paper);border:2.5px solid var(--moss);border-radius:999px;padding:5px 12px 5px 6px;font-weight:800;font-size:15px;box-shadow:0 3px 0 var(--moss);font-variant-numeric:tabular-nums}
 .coin{width:22px;height:22px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#fff3b8,var(--sun) 55%,#d99a10);border:2px solid #a87300;display:inline-grid;place-items:center;font-size:12px;color:#7a5200;font-weight:800;flex:none}
@@ -123,7 +123,33 @@ html,body{height:100%;margin:0;overflow:hidden;-webkit-touch-callout:none;-webki
 .steps li::before{counter-increment:s;content:counter(s);width:26px;height:26px;border-radius:50%;background:var(--sun);color:var(--moss);display:grid;place-items:center;font-weight:800;border:2px solid var(--moss)}
 .empty{padding:12px;border-radius:12px;border:2px dashed #9fb3a7;color:var(--muted);font-weight:700;text-align:center}
 .cardhead{display:flex;justify-content:space-between;align-items:center;gap:8px}
-.helpbtn{width:38px;justify-content:center;padding:5px 0;letter-spacing:-1px}
+.roundbtn{pointer-events:auto;flex:none;position:relative;width:54px;height:54px;border-radius:50%;border:3px solid var(--moss);background:var(--paper);box-shadow:0 4px 0 var(--moss);cursor:pointer;display:grid;place-items:center;padding:0;touch-action:manipulation}
+.roundbtn *,.invbtn *{pointer-events:none}
+.roundbtn:active{transform:translateY(2px);box-shadow:0 2px 0 var(--moss)}
+.roundbtn:focus-visible,.invbtn:focus-visible{outline:3px solid var(--sun);outline-offset:2px}
+.bars{display:flex;gap:6px}.bars i{display:block;width:7px;height:20px;border-radius:3px;background:var(--moss)}
+.keyhint{position:absolute;right:-6px;bottom:-8px;font:800 10px/1 var(--body);background:var(--moss);color:var(--mint);padding:3px 5px;border-radius:6px;letter-spacing:.02em}
+.actrow{display:flex;align-items:flex-end;gap:10px}
+.invbtn{pointer-events:auto;position:relative;display:grid;grid-template-columns:auto auto;grid-template-rows:auto auto;column-gap:8px;align-items:center;text-align:left;
+  font:inherit;color:var(--ink);background:var(--paper);border:3px solid var(--moss);border-radius:18px;box-shadow:0 4px 0 var(--moss);padding:8px 12px 8px 8px;cursor:pointer;touch-action:manipulation;max-width:46vw}
+.invbtn:active{transform:translateY(2px);box-shadow:0 2px 0 var(--moss)}
+.invbtn .bag{grid-row:1/3;width:34px;height:34px;border-radius:10px;background:var(--leaf);position:relative}
+.invbtn .bag::before{content:"";position:absolute;left:9px;top:-5px;width:12px;height:9px;border:3px solid var(--leaf);border-bottom:0;border-radius:8px 8px 0 0}
+.invbtn .bag::after{content:"";position:absolute;left:8px;right:8px;top:12px;height:4px;border-radius:2px;background:var(--mint)}
+.invsel{display:flex;align-items:center;gap:5px;min-width:0;font-size:14px;white-space:nowrap}
+.invsel b{overflow:hidden;text-overflow:ellipsis}
+.invsel small{font-weight:800;color:var(--muted);font-variant-numeric:tabular-nums}
+.invlbl{font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);display:flex;align-items:center;gap:5px}
+.invlbl .keyhint{position:static;font-size:11px;padding:2px 5px}
+.touch .keyhint{display:none}
+.invgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(132px,1fr));gap:8px}
+.invtile{font:inherit;display:flex;align-items:center;gap:8px;text-align:left;padding:10px;border-radius:14px;border:2.5px solid transparent;background:var(--mint);color:var(--ink);cursor:pointer;min-width:0}
+.invtile b{display:block;font-size:14.5px;line-height:1.2;overflow-wrap:anywhere}
+.invtile small{color:var(--muted);font-weight:800;font-size:12.5px;font-variant-numeric:tabular-nums}
+.invtile .dot{width:22px;height:22px}
+.invtile.on{border-color:var(--moss);box-shadow:0 0 0 3px var(--sun)}
+.invtile.static{cursor:default}
+.invtile:focus-visible{outline:3px solid var(--sun);outline-offset:2px}
 .pausegrid{display:grid;gap:8px}
 .pausegrid .btn{width:100%;text-align:left;display:flex;justify-content:space-between;align-items:center;gap:8px}
 .pausegrid .btn span{font-weight:700;opacity:.8}
@@ -138,8 +164,8 @@ html,body{height:100%;margin:0;overflow:hidden;-webkit-touch-callout:none;-webki
 .keys kbd{font:inherit;font-weight:800;font-size:12.5px;background:var(--mint);border:2px solid var(--moss);border-bottom-width:3px;border-radius:7px;padding:2px 7px;white-space:nowrap;justify-self:start}
 .keys span{color:var(--muted);font-size:14px}
 #actBtn{-webkit-user-select:none;user-select:none}
-@media (max-width:420px){#actBtn{width:84px;height:84px;font-size:16px}#joy{width:112px;height:112px}.xpbar{width:60px}.pill{font-size:14px;padding:4px 10px 4px 5px}.viewbtn{padding:4px 10px}#prompt{font-size:13px}}
-@media (max-height:520px){#hud{padding-block:calc(env(safe-area-inset-top,0px) + 8px) calc(env(safe-area-inset-bottom,0px) + 10px)}.top{flex-direction:row;flex-wrap:wrap;align-items:center}.tray{max-width:min(100%,560px)}#joy{width:100px;height:100px}#knob{width:44px;height:44px;margin:-22px 0 0 -22px}#actBtn{width:74px;height:74px;font-size:15px}.pill{font-size:13px;padding:3px 9px 3px 4px}.coin,.badge{width:20px;height:20px;min-width:20px}#prompt{font-size:12.5px;padding:4px 10px}.card{padding:14px}.card h2{font-size:22px}}
+@media (max-width:420px){#actBtn{width:84px;height:84px;font-size:16px}#joy{width:112px;height:112px}.invbtn{padding:6px 9px 6px 6px}.invbtn .bag{width:28px;height:28px}.invsel{font-size:13px}.bottom{gap:8px}.xpbar{width:60px}.pill{font-size:14px;padding:4px 10px 4px 5px}.viewbtn{padding:4px 10px}#prompt{font-size:13px}}
+@media (max-height:520px){.roundbtn{width:46px;height:46px}.invbtn{padding:5px 9px 5px 6px}#hud{padding-block:calc(env(safe-area-inset-top,0px) + 8px) calc(env(safe-area-inset-bottom,0px) + 10px)}.top{flex-direction:row;flex-wrap:wrap;align-items:center}.tray{max-width:min(100%,560px)}#joy{width:100px;height:100px}#knob{width:44px;height:44px;margin:-22px 0 0 -22px}#actBtn{width:74px;height:74px;font-size:15px}.pill{font-size:13px;padding:3px 9px 3px 4px}.coin{width:20px;height:20px}.badge{height:20px;min-width:20px;width:auto;font-size:12px}#prompt{font-size:12.5px;padding:4px 10px}.card{padding:14px}.card h2{font-size:22px}}
 @media (hover:hover) and (pointer:fine){#actBtn:hover:not(:disabled){filter:brightness(1.06)}.btn:hover:not(:disabled),.seedbtn:hover{filter:brightness(1.05)}}
 @media (prefers-reduced-motion:reduce){#toast,.xpbar i{transition:none}}
 </style>
@@ -162,17 +188,18 @@ html,body{height:100%;margin:0;overflow:hidden;-webkit-touch-callout:none;-webki
     <div class="row">
       <span class="pill"><span class="coin">$</span><span id="coins">15</span></span>
       <span class="pill" title="Gardener level"><span class="badge" id="lvl">1</span><span class="xpbar"><i id="xpfill"></i></span><small id="xptext">0/15 XP</small></span>
-      <span class="pill" id="flowersPill" title="Flowers in your basket"></span>
-      <button class="pill viewbtn helpbtn" id="helpBtn" aria-label="Pause">II</button>
     </div>
-    <div class="tray" id="tray"><span class="lbl">Seeds</span></div>
+    <button class="roundbtn pausebtn" id="helpBtn" aria-label="Pause"><span class="bars" aria-hidden="true"><i></i><i></i></span><kbd class="keyhint">Esc</kbd></button>
   </div>
   <div class="bottom">
     <div id="joy" hidden><div id="knob"></div></div>
-    <div class="hint" id="hint">Mouse to look · WASD to walk · click or E to act · scroll to zoom · Esc to pause</div>
+    <div class="hint" id="hint">Mouse to look · WASD to walk · click or E to act · I for inventory · Esc to pause</div>
     <div class="act">
       <div id="prompt" hidden></div>
-      <button id="actBtn" disabled>…</button>
+      <div class="actrow">
+        <button class="invbtn" id="invBtn" aria-label="Open inventory"><span class="bag" aria-hidden="true"></span><span class="invsel"><span class="dot" id="invDot"></span><b id="invName">Daisy</b><small id="invCount">×4</small></span><span class="invlbl">Inventory <kbd class="keyhint">I</kbd></span></button>
+        <button id="actBtn" disabled>…</button>
+      </div>
     </div>
   </div>
 </div>
@@ -1537,21 +1564,31 @@ function updateManager(dt){
 
 /* ---------- HUD ---------- */
 const $=id=>document.getElementById(id);
-const coinsEl=$('coins'),flowersPill=$('flowersPill'),tray=$('tray'),promptEl=$('prompt'),actBtn=$('actBtn'),toastEl=$('toast');
-const seedBtns={};
-const trayNone=document.createElement('span');trayNone.className='none';trayNone.textContent='Empty · buy seeds outside';tray.appendChild(trayNone);
-TYPES.forEach(t=>{const b=document.createElement('button');b.className='seedbtn';b.id='seed-'+t;
-  b.innerHTML=`<span class="dot" style="background:${SEEDS[t].petal}"></span><span>${SEEDS[t].name}</span><span id="sc-${t}">0</span>`;
-  b.onclick=()=>{S.sel=t;blip(520,.06);renderHUD()};tray.appendChild(b);seedBtns[t]=b});
+const coinsEl=$('coins'),promptEl=$('prompt'),actBtn=$('actBtn'),toastEl=$('toast');
 function renderHUD(){
   coinsEl.textContent=S.coins;
   const L=level(),a=XP_AT(L),b=XP_AT(L+1);
   $('lvl').textContent=L;$('xpfill').style.width=((S.xp-a)/(b-a)*100).toFixed(1)+'%';$('xptext').textContent=`${S.xp-a}/${b-a} XP`;
-  const have=TYPES.filter(t=>S.flowers[t]>0);
-  flowersPill.innerHTML=have.length?have.map(t=>`<span class="dot" style="background:${SEEDS[t].petal}"></span>${S.flowers[t]}`).join('&nbsp;&nbsp;'):'<span style="padding-left:6px;color:#4d6b5a">No flowers yet</span>';
-  let any=false;
-  TYPES.forEach(t=>{$('sc-'+t).textContent=S.seeds[t];if(S.sel===t&&!seedBtns[t].classList.contains('sel'))requestAnimationFrame(()=>{try{seedBtns[t].scrollIntoView({inline:'nearest',block:'nearest'})}catch(_){}});const show=S.seeds[t]>0;any=any||show;seedBtns[t].classList.toggle('sel',S.sel===t);seedBtns[t].hidden=!show});
-  trayNone.hidden=any;
+  // inventory button shows the seed you're about to plant
+  if(!(S.seeds[S.sel]>0)){const t=TYPES.find(t=>S.seeds[t]>0);if(t)S.sel=t}
+  const sel=S.seeds[S.sel]>0?S.sel:null;
+  $('invDot').style.background=sel?SEEDS[sel].petal:'transparent';$('invDot').hidden=!sel;
+  $('invName').textContent=sel?SEEDS[sel].name:'No seeds';$('invCount').textContent=sel?`×${S.seeds[sel]}`:'';
+  if(panelKind==='inv')openInventory();
+}
+function openInventory(){
+  if(document.pointerLockElement)try{document.exitPointerLock()}catch(_){}
+  panelKind='inv';panel.hidden=false;
+  const seeds=TYPES.filter(t=>S.seeds[t]>0),basket=TYPES.filter(t=>S.flowers[t]>0);
+  const kindOf=t=>SEEDS[t].tree?'Fruit tree · plant in the orchard':SEEDS[t].cat==='cactus'?'Cactus':SEEDS[t].cat==='fruit'?'Fruit plant':'Flower';
+  card.innerHTML=`<div class="cardhead"><h2>Inventory</h2><span class="pill"><span class="coin">$</span>${S.coins}</span></div>
+  <h3>Seeds · tap one to plant it next</h3>
+  ${seeds.length?`<div class="invgrid">${seeds.map(t=>`<button class="invtile${t===S.sel?' on':''}" data-pick="${t}" aria-pressed="${t===S.sel}"><span class="dot" style="background:${SEEDS[t].petal}"></span><span><b>${SEEDS[t].name}</b><small>×${S.seeds[t]} · ${kindOf(t)}</small></span></button>`).join('')}</div>`
+    :`<div class="empty">No seeds yet. Buy some at the Seed Shop outside the greenhouse.</div>`}
+  <h3>Basket · sell these at the Flower Shop</h3>
+  ${basket.length?`<div class="invgrid">${basket.map(t=>`<div class="invtile static"><span class="dot" style="background:${SEEDS[t].petal}"></span><span><b>${plural(itemOf(t),S.flowers[t])}</b><small>×${S.flowers[t]}</small></span></div>`).join('')}</div>`
+    :`<div class="empty">Your basket is empty. Harvest ripe plants to fill it.</div>`}
+  <button class="btn alt big" data-close>${touchy?'Close':'Close (I)'}</button>`;
 }
 let toastT;
 function toast(msg,cls='',ms=1400){toastEl.textContent=msg;toastEl.className='on '+cls;clearTimeout(toastT);toastT=setTimeout(()=>toastEl.className=cls,ms)}
@@ -1578,9 +1615,9 @@ function closePanel(){panel.hidden=true;panelKind=null}
 function openHelp(fromPause){if(document.pointerLockElement)try{document.exitPointerLock()}catch(_){};panelKind=fromPause?'pausehelp':'help';panel.hidden=false;
   card.innerHTML=`<div class="cardhead"><h2>Controls</h2></div>
   <h3>Phone and tablet</h3>
-  <div class="keys"><kbd>Joystick</kbd><span>Walk (bottom left)</span><kbd>Drag screen</kbd><span>Look around</span><kbd>Pinch</kbd><span>Zoom in or out (third person)</span><kbd>Pink button</kbd><span>Plant, water, harvest, shop</span><kbd>II button</kbd><span>Pause</span><kbd>Seed tray</kbd><span>Tap a seed to pick it, swipe for more</span></div>
+  <div class="keys"><kbd>Joystick</kbd><span>Walk (bottom left)</span><kbd>Drag screen</kbd><span>Look around</span><kbd>Pinch</kbd><span>Zoom in or out (third person)</span><kbd>Pink button</kbd><span>Plant, water, harvest, shop</span><kbd>II button</kbd><span>Pause</span><kbd>Inventory</kbd><span>Tap it to see your seeds and basket; tap a seed to plant it next</span><kbd>II button</kbd><span>Pause (top right)</span></div>
   <h3>Computer</h3>
-  <div class="keys"><kbd>W A S D</kbd><span>Walk</span><kbd>Move mouse</kbd><span>Look around</span><kbd>Q / R or ← →</kbd><span>Turn the camera</span><kbd>Scroll wheel</kbd><span>Zoom in or out (third person)</span><kbd>Click · E · Space</kbd><span>Plant, water, harvest, shop</span><kbd>1–9</kbd><span>Pick a seed</span><kbd>V</kbd><span>Switch first / third person</span><kbd>Esc</kbd><span>Pause, or close a shop</span></div>
+  <div class="keys"><kbd>W A S D</kbd><span>Walk</span><kbd>Move mouse</kbd><span>Look around</span><kbd>Q / R or ← →</kbd><span>Turn the camera</span><kbd>Scroll wheel</kbd><span>Zoom in or out (third person)</span><kbd>Click · E · Space</kbd><span>Plant, water, harvest, shop</span><kbd>I</kbd><span>Open or close your inventory</span><kbd>1–9</kbd><span>Pick a seed</span><kbd>V</kbd><span>Switch first / third person</span><kbd>Esc</kbd><span>Pause, or close a shop</span></div>
   <p>On a computer, click the game once and the mouse steers your view. Press Esc to pause and get your cursor back.</p>
   ${fromPause?'<button class="btn alt big" data-pause>Back to the pause menu</button>':'<button class="btn alt big" data-close>Back to the garden</button>'}`}
 let confirmReset=false,customWho='basil',customFrom='pause';
@@ -1676,7 +1713,8 @@ function resetGarden(){
   player.position.set(0,0,-1.2);yaw=0;setView(keepView);renderHUD();save();
   confirmReset=false;closePanel();toast('Fresh garden started','',1800);
 }
-$('helpBtn').addEventListener('click',e=>{openPause();blip(500,.06);$('helpBtn').blur()});
+$('helpBtn').addEventListener('click',e=>{if(!started)return;openPause();blip(500,.06);$('helpBtn').blur()});
+$('invBtn').addEventListener('click',e=>{if(!started)return;panelKind==='inv'?closePanel():(openInventory(),blip(520,.05));$('invBtn').blur()});
 panel.addEventListener('pointerdown',e=>{if(e.target!==panel)return;if(panelKind==='pause'){resume(e.pointerType==='mouse');return}if(panelKind==='pausehelp'||panelKind==='pausecustom'){openPause();return}closePanel();if(e.pointerType==='mouse')grabMouse()});
 function freeMouse(){if(document.pointerLockElement)try{document.exitPointerLock()}catch(_){}}
 let shopTab='seeds';
@@ -1728,6 +1766,7 @@ function openFlowerShop(){freeMouse();
 }
 card.addEventListener('click',e=>{
   const b=e.target.closest('button');if(!b||b.disabled)return;
+  if(b.dataset.pick){S.sel=b.dataset.pick;blip(560,.05);closePanel();renderHUD();toast(`${SEEDS[S.sel].name} selected`);if(e.detail>0)grabMouse();return}
   if(b.hasAttribute('data-close')){closePanel();if(e.detail>0)grabMouse();return}
   if(b.hasAttribute('data-resume')){resume(e.detail>0);return}
   if(b.hasAttribute('data-pause')){openPause();return}
@@ -1830,20 +1869,21 @@ addEventListener('keydown',e=>{
     if(panelKind==='pausehelp'||panelKind==='pausecustom'){openPause();return}
     if(panelKind){closePanel();return}
     openPause();return}
+  if((e.key==='i'||e.key==='I')&&started&&(!panelKind||panelKind==='inv')){e.preventDefault();if(panelKind==='inv'){closePanel();grabMouse()}else{openInventory();blip(520,.05)}return}
   if(panelKind||!started)return;
   keys[e.key.toLowerCase()]=true;
   if(e.key==='e'||e.key==='E'||e.key===' '){e.preventDefault();act()}
   if(e.key==='h'||e.key==='H'||e.key==='?'){openHelp();return}
   if(e.key==='p'||e.key==='P'){openPause();return}
   if(e.key==='v'||e.key==='V')setView(view==='first'?'third':'first');
-  const n=+e.key;if(n>=1&&n<=9){const owned=TYPES.filter(t=>S.seeds[t]>0);if(owned[n-1]){S.sel=owned[n-1];renderHUD()}}
+  const n=+e.key;if(n>=1&&n<=9){const owned=TYPES.filter(t=>S.seeds[t]>0);if(owned[n-1]){S.sel=owned[n-1];renderHUD();toast(`${SEEDS[S.sel].name} selected`)}}
 });
 addEventListener('keyup',e=>{keys[e.key.toLowerCase()]=false});
 addEventListener('blur',()=>{for(const k in keys)keys[k]=false});
 const joy=$('joy'),knob=$('knob');const stick={x:0,y:0,id:null};
 let touchy=matchMedia('(pointer:coarse)').matches;
 const hintEl=$('hint');
-function useTouch(on){touchy=on;joy.hidden=!on;hintEl.hidden=on}
+function useTouch(on){touchy=on;joy.hidden=!on;hintEl.hidden=on;document.documentElement.classList.toggle('touch',on)}
 useTouch(touchy);
 addEventListener('touchstart',()=>{if(!touchy)useTouch(true)},{passive:true});
 addEventListener('keydown',e=>{if(touchy&&/^(w|a|s|d|arrow)/i.test(e.key))useTouch(false)});
