@@ -1062,6 +1062,7 @@ const ORCHARD=[[9,-3],[13.5,-3],[9,-7.5],[13.5,-7.5],[9,-12],[13.5,-12],[9,-16.5
 const orch=[];
 const orchDripG=new THREE.Group();scene.add(orchDripG);
 const hoseM=mat('#2d3a40',{roughness:.5}),dripTipM=mat('#3f97e0');
+const HOSE_X=10.3,PUMP=[9.65,1.0];   // trail runs x 10.45-12.05; stone rings end near x 10.2
 function addOrchSpot(){
   const i=orch.length,[x,z]=ORCHARD[i],g=new THREE.Group();g.position.set(x,0,z);scene.add(g);const parts=[];
   g.add(mesh(CYL,mat('#6a4a2e'),.95,.05,.95,0,.025,0,false));
@@ -1074,13 +1075,13 @@ function addOrchSpot(){
   const put=(grp,o)=>{grp.add(o);parts.push([grp,o])};
   const r=mesh(RING,hoseM,.72,.72,.18,x,.07,z,false);r.rotation.x=Math.PI/2;put(orchDripG,r);
   for(let k=0;k<8;k++){const a=k/8*Math.PI*2;put(orchDripG,mesh(BOX,dripTipM,.05,.035,.05,x+Math.cos(a)*.72,.08,z+Math.sin(a)*.72,false))}
-  const bx=x<11?x+.72:x-.72,len=Math.abs(10.55-bx),feed=mesh(CYL,hoseM,.03,len,.03,(10.55+bx)/2,.06,z,false);feed.rotation.z=Math.PI/2;put(orchDripG,feed);
+  const bx=x<11?x+.72:x-.72,len=Math.abs(HOSE_X-bx),feed=mesh(CYL,hoseM,.03,len,.03,(HOSE_X+bx)/2,.06,z,false);feed.rotation.z=Math.PI/2;put(orchDripG,feed);
   if(i===6){ // the new row: extend the path and the main hose
     put(scene,mesh(BOX,gravel,1.6,.04,4.6,11.25,.022,-16.2,false));
-    const m=mesh(CYL,hoseM,.04,4.4,.04,10.55,.06,-14.4,false);m.rotation.x=Math.PI/2;put(orchDripG,m)}
+    const m=mesh(CYL,hoseM,.04,4.4,.04,HOSE_X,.06,-14.4,false);m.rotation.x=Math.PI/2;put(orchDripG,m)}
   if(i===8){ // grand orchard: path and hose run on to the last row
     put(scene,mesh(BOX,gravel,1.6,.04,9.2,11.25,.022,-23.1,false));
-    const m=mesh(CYL,hoseM,.04,9.2,.04,10.55,.06,-21.2,false);m.rotation.x=Math.PI/2;put(orchDripG,m);
+    const m=mesh(CYL,hoseM,.04,9.2,.04,HOSE_X,.06,-21.2,false);m.rotation.x=Math.PI/2;put(orchDripG,m);
     const lamp=new THREE.Group();lamp.position.set(12.25,0,-18.8);lamp.add(mesh(BOX,mat('#8e6440'),.1,1.6,.1,0,.8,0));lamp.add(mesh(SPH_LO,mat('#ffe9a0',{emissive:C('#ffcf5a'),emissiveIntensity:.8}),.14,.18,.14,0,1.7,0,false));put(scene,lamp)}
   const O={g,x,z,stake,ring,icon,tree:null,t:null,drip:0,parts,col};orch.push(O);return O}
 function removeOrchSpot(){const O=orch.pop();if(!O)return;scene.remove(O.g);O.parts.forEach(([grp,o])=>grp.remove(o));const ci=colliders.indexOf(O.col);if(ci>=0)colliders.splice(ci,1)}
@@ -1088,8 +1089,12 @@ function fitOrchard(){const n=treeCount();const added=[];while(orch.length<n)add
   while(S.trees.length<n)S.trees.push(null);S.trees.length=n;return added}
 for(let k=0;k<6;k++)addOrchSpot();
 fitOrchard();   // a saved game with the orchard expansion gets its extra row straight away
-{const main=mesh(CYL,hoseM,.04,15.4,.04,10.55,.06,-4.5,false);main.rotation.x=Math.PI/2;orchDripG.add(main);
- orchDripG.add(mesh(BOX,dripTipM,.24,.32,.2,10.55,.16,3.25));orchDripG.add(mesh(CYL,mat('#c9a24a',{metalness:.6,roughness:.35}),.05,.12,.05,10.55,.38,3.25,false));}
+// the pump sits on the grass just inside the archway (left side); the main hose runs along the trail's edge, not on it
+{const main=mesh(CYL,hoseM,.04,13.2,.04,HOSE_X,.06,-5.6,false);main.rotation.x=Math.PI/2;orchDripG.add(main);
+ const link=mesh(CYL,hoseM,.04,HOSE_X-PUMP[0],.04,(HOSE_X+PUMP[0])/2,.06,PUMP[1],false);link.rotation.z=Math.PI/2;orchDripG.add(link);
+ orchDripG.add(mesh(BOX,dripTipM,.26,.34,.22,PUMP[0],.17,PUMP[1]));orchDripG.add(mesh(BOX,mat('#2c6fa8'),.28,.04,.24,PUMP[0],.36,PUMP[1],false));
+ orchDripG.add(mesh(CYL,mat('#c9a24a',{metalness:.6,roughness:.35}),.05,.12,.05,PUMP[0],.44,PUMP[1],false));
+ const wheel=mesh(RING,mat('#c8324a'),.06,.06,.06,PUMP[0],.5,PUMP[1],false);wheel.rotation.x=Math.PI/2;orchDripG.add(wheel);}
 // ---- beehives on the east edge of the orchard, with bees that visit the trees ----
 const HIVES=[[16.3,-5.25],[16.3,-9.75]];
 const hiveParts=[];
