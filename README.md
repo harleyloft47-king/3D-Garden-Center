@@ -14,6 +14,8 @@ Open `index.html` in a browser. Nothing to install. The game loads its 3D engine
 - **Greenhouse** with up to 12 plots, expanded three times from the Seed Shop
 - **Orchard** with up to 12 fruit trees that keep fruiting after every picking
 - **Upgrades:** drip irrigation, sprinklers, grow lights, compost bins, orchard drip line, beehives
+- **Cottage kitchen:** walk into the house, cook 18 recipes (jams, canned fruit, pies, cakes, breads) on the stove and in the oven from your fruit and honey
+- **Bakery table:** put your cooked goods out and bakery customers walk up to buy them
 - **Honey:** beehives fill with jars of honey to collect and sell (faster with more grown fruit trees)
 - **Workers you can hire and customize:** a gardener who harvests, waters, plants and buys seeds for customers, and a shopkeeper who sells for you
 - **Seed Shop and Flower Shop** stalls where the shopkeepers fetch from their shelves

@@ -95,6 +95,8 @@ html,body{height:100%;margin:0;overflow:hidden;-webkit-touch-callout:none;-webki
 .tab[aria-selected="true"]{background:var(--paper);color:var(--moss);box-shadow:0 2px 0 var(--moss)}
 @media (max-width:440px){.tab{font-size:13px;padding:8px 2px}.tab .new{margin-left:3px}}
 .tab .new{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--petal);margin-left:6px;vertical-align:middle}
+.kbar{height:8px;border-radius:6px;background:#d6e4da;overflow:hidden;margin-top:6px}.kbar i{display:block;height:100%;background:linear-gradient(90deg,var(--sun),var(--petal))}
+.needs{display:block}.needs .ok{color:var(--leaf)}.needs .miss{color:#c8324a}
 .tabs.two{grid-template-columns:1fr 1fr}
 .custom{display:grid;grid-template-columns:auto 1fr;gap:14px;align-items:center}
 .custom canvas{width:112px;height:152px;border-radius:16px;background:var(--paper);border:2px solid var(--mint)}
@@ -219,6 +221,7 @@ html,body{height:100%;margin:0;overflow:hidden;-webkit-touch-callout:none;-webki
       <li>Fruit trees grow in the orchard beside the greenhouse. Once grown, they keep making fruit every time you pick them.</li>
       <li>Carnivorous plants hunt the flies buzzing around your greenhouse. Every fly they catch makes them grow faster, and they snap at you if you get too close.</li>
       <li>Pause the game (II button or Esc) to switch to first person and see through your gardener's eyes.</li>
+      <li>The cottage to the left of the greenhouse has a kitchen: cook your fruit and honey into jams, pies and cakes, then sell them at the bakery table outside.</li>
       <li>The Seed Shop is out the door on the left. It also sells irrigation upgrades. The Flower Shop is on the right, where customers line up.</li>
     </ol>
     <button class="btn big" id="startBtn">Start gardening</button>
@@ -411,10 +414,10 @@ const NAMES=['Mira','Theo','June','Arlo','Ivy','Hank','Rosa','Omar','Pip','Lena'
 /* ---------- state ---------- */
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 const zeros=()=>Object.fromEntries(TYPES.map(t=>[t,0]));
-const fresh=()=>({coins:15,xp:0,seeds:Object.assign(zeros(),{daisy:4}),flowers:zeros(),plots:Array(6).fill(null),trees:Array(6).fill(null),honey:[0,0],sel:'daisy',customers:[],up:{},seen:false,gh:0,worker:false,workerReplant:true,memo:[],looks:{},manager:false,managerOn:true});
+const fresh=()=>({coins:15,xp:0,seeds:Object.assign(zeros(),{daisy:4}),flowers:zeros(),plots:Array(6).fill(null),trees:Array(6).fill(null),honey:[0,0],goods:{},table:[],kitchen:{stove:null,oven:null},sel:'daisy',customers:[],up:{},seen:false,gh:0,worker:false,workerReplant:true,memo:[],looks:{},manager:false,managerOn:true});
 const KEY='glasshouse-garden-v2';
 let S=fresh();
-try{const raw=localStorage.getItem(KEY);if(raw){const d=JSON.parse(raw);d.honey=Array.isArray(d.honey)?d.honey.slice(0,2).map(v=>Math.max(0,Math.min(HONEY_MAX,+v||0))):[0,0];S=Object.assign(fresh(),d);S.seeds=Object.assign(zeros(),d.seeds);S.flowers=Object.assign(zeros(),d.flowers);S.up=d.up||{};S.customers=(S.customers||[]).filter(o=>SEEDS[o.t]);S.gh=clamp(d.gh|0,0,3);S.looks=d.looks&&typeof d.looks==='object'?d.looks:{};S.trees=(Array.isArray(d.trees)?d.trees:[]).slice(0,treeCount()).map(p=>p&&SEEDS[p.t]&&SEEDS[p.t].tree?p:null);while(S.trees.length<treeCount())S.trees.push(null);S.memo=Array.isArray(d.memo)?d.memo:[];S.plots=(S.plots||[]).slice(0,plotCount(S.gh)).map(p=>p&&SEEDS[p.t]?p:null);while(S.plots.length<plotCount(S.gh))S.plots.push(null)}}catch(e){}
+try{const raw=localStorage.getItem(KEY);if(raw){const d=JSON.parse(raw);if(!d.goods||typeof d.goods!=='object')d.goods={};if(!Array.isArray(d.table))d.table=[];if(!d.kitchen||typeof d.kitchen!=='object')d.kitchen={stove:null,oven:null};d.honey=Array.isArray(d.honey)?d.honey.slice(0,2).map(v=>Math.max(0,Math.min(HONEY_MAX,+v||0))):[0,0];S=Object.assign(fresh(),d);S.seeds=Object.assign(zeros(),d.seeds);S.flowers=Object.assign(zeros(),d.flowers);S.up=d.up||{};S.customers=(S.customers||[]).filter(o=>SEEDS[o.t]);S.gh=clamp(d.gh|0,0,3);S.looks=d.looks&&typeof d.looks==='object'?d.looks:{};S.trees=(Array.isArray(d.trees)?d.trees:[]).slice(0,treeCount()).map(p=>p&&SEEDS[p.t]&&SEEDS[p.t].tree?p:null);while(S.trees.length<treeCount())S.trees.push(null);S.memo=Array.isArray(d.memo)?d.memo:[];S.plots=(S.plots||[]).slice(0,plotCount(S.gh)).map(p=>p&&SEEDS[p.t]?p:null);while(S.plots.length<plotCount(S.gh))S.plots.push(null)}}catch(e){}
 applyNames();
 const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}};
 const level=()=>levelOf(S.xp);
@@ -1428,14 +1431,14 @@ addCol(-7.8,-7.4,4.65,7.35);addCol(7.4,7.8,4.65,7.35);   // the two shelves
 const SEED_SPOT=new THREE.Vector2(-5.3,6),FLOWER_SPOT=new THREE.Vector2(5.3,6);
 
 /* decor */
-[[-12,-4],[-17,-7],[-13,9],[13,13.5],[-6,14],[5,15.5],[-15,-12],[-16.5,-26],[0,-24],[-9,-13],[-12,-20],[-16,2],[17,-1.5]].forEach(([x,z])=>{
+[[-12,-3.6],[-17.5,-2.5],[-13,9],[13,13.5],[-6,14],[5,15.5],[-16.5,-15],[-16.5,-26],[0,-24],[-11,-17.5],[-12,-21],[-16,2],[17,-1.5]].forEach(([x,z])=>{
   scene.add(mesh(CYL,mat('#7a5232'),.22,1.4,.22,x,.7,z));
   scene.add(mesh(new THREE.ConeGeometry(1.3,2.6,9),mat('#2f7d45'),1,1,1,x,2.4,z));
   scene.add(mesh(new THREE.ConeGeometry(1,2,9),mat('#3c9452'),1,1,1,x,3.4,z));
   addCol(x-.35,x+.35,z-.35,z+.35);
 });
 for(let i=0;i<70;i++){const x=(Math.random()*2-1)*17,z=-29+Math.random()*46;
-  if(x>-6.5&&x<6.5&&z>-21&&z<12.5)continue;if(x>6.5&&x<17.5&&z>-28&&z<4.5)continue;if(x<-5.4&&x>-7.2&&z>-5&&z<-1.5)continue;if(Math.abs(x)>4&&Math.abs(x)<17&&z>3&&z<12)continue;
+  if(x>-6.5&&x<6.5&&z>-21&&z<12.5)continue;if(x<-6.4&&x>-17.5&&z>-14.5&&z<3.5)continue;if(x>6.5&&x<17.5&&z>-28&&z<4.5)continue;if(x<-5.4&&x>-7.2&&z>-5&&z<-1.5)continue;if(Math.abs(x)>4&&Math.abs(x)<17&&z>3&&z<12)continue;
   const b=makeBloom(SEEDS[Math.random()<.7?'daisy':'tulip'],.6);b.position.set(x,.18,z);scene.add(b)}
 
 /* ---------- customers (walk in, queue, walk off with a bouquet) ---------- */
@@ -1595,6 +1598,193 @@ function updateManager(dt){
   if(i<0)return;
   if(serveCustomer(i,true)&&panelKind==='flower')openFlowerShop()}
 
+/* ---------- cottage with a kitchen, and a bakery table in the yard ---------- */
+// Recipes: station, ingredients from your basket, sale price at the bakery, look of the finished good
+const RECIPES=[
+ ['applesauce','Applesauce','stove',{apple:3},65,'jar','#e8d07a'],
+ ['bluepreserves','Blueberry Preserves','stove',{blueberry:4},170,'jar','#3a4ad8'],
+ ['strawjam','Strawberry Jam','stove',{strawberry:4,honey:1},150,'jar','#d81a3a'],
+ ['honeylemonade','Honey Lemonade','stove',{lemon:2,honey:1},150,'bottle','#f6e05a'],
+ ['cannedcherries','Canned Cherries','stove',{cherry:4},250,'jar','#a80a24'],
+ ['cannedpeaches','Canned Peaches','stove',{peach:3},260,'jar','#ffb07a'],
+ ['mangochutney','Mango Chutney','stove',{mango:2,honey:1},390,'jar','#f2a830'],
+ ['grapejelly','Grape Jelly','stove',{grapes:3},720,'jar','#6a2a8a'],
+ ['strawtart','Strawberry Tart','oven',{strawberry:3,honey:1},140,'pie','#e8102a'],
+ ['applepie','Apple Pie','oven',{apple:3,honey:1},150,'pie','#c8862a'],
+ ['honeycake','Honey Cake','oven',{honey:2},180,'cake','#e8b84a'],
+ ['orangebuns','Orange Honey Buns','oven',{orange:2,honey:1},180,'bun','#ff8a1a'],
+ ['muffins','Blueberry Muffins','oven',{blueberry:3,honey:1},220,'muffin','#3a4ad8'],
+ ['pineapplecake','Pineapple Upside-Down Cake','oven',{pineapple:1,honey:1},260,'cake','#f2c830'],
+ ['peachcobbler','Peach Cobbler','oven',{peach:2,honey:1},270,'pie','#ffb07a'],
+ ['cherrypie','Cherry Pie','oven',{cherry:3,honey:1},280,'pie','#a80a24'],
+ ['macaroons','Coconut Macaroons','oven',{coconut:2,honey:1},760,'muffin','#f4f1e8'],
+ ['bananabread','Banana Bread','oven',{banana:2},2500,'loaf','#a8742a'],
+].map(([id,name,station,needs,sell,shape,color])=>({id,name,station,needs,sell,shape,color,xp:Math.max(4,Math.round(sell/8)),time:station==='stove'?Math.round(30+sell/25):Math.round(45+sell/20)}));
+const RECIPE=Object.fromEntries(RECIPES.map(r=>[r.id,r]));
+const TABLE_MAX=8;
+const recipeLock=r=>{for(const t in r.needs){if(t==='honey'){if(!S.up.beehives)return'Needs beehives for honey'}else if(!unlocked(t))return`Unlocks at level ${SEEDS[t].lvl}`}return null};
+const canCook=r=>Object.entries(r.needs).every(([t,n])=>S.flowers[t]>=n);
+// finished goods, small (s≈1 → about a jar's size)
+function makeGood(id,s=1){const r=RECIPE[id],g=new THREE.Group(),c=mat(r.color,{roughness:.5});
+  const crust=mat('#d8a058',{roughness:.8}),white=mat('#fff8ea');
+  if(r.shape==='jar'){g.add(mesh(CYL,mat(r.color,{roughness:.15,transparent:true,opacity:.92}),.06*s,.11*s,.06*s,0,.055*s,0));g.add(mesh(CYL,mat('#d8263a'),.066*s,.025*s,.066*s,0,.122*s,0));
+    g.add(mesh(CYL,white,.061*s,.04*s,.061*s,0,.055*s,0,false))}
+  else if(r.shape==='bottle'){g.add(mesh(CYL,mat(r.color,{roughness:.15,transparent:true,opacity:.85}),.045*s,.16*s,.045*s,0,.08*s,0));g.add(mesh(CYL,mat('#dfe8e4',{transparent:true,opacity:.6}),.02*s,.06*s,.02*s,0,.19*s,0));g.add(mesh(CYL,mat('#2e7a4b'),.024*s,.02*s,.024*s,0,.225*s,0))}
+  else if(r.shape==='pie'){g.add(mesh(CYL,crust,.15*s,.05*s,.15*s,0,.025*s,0));g.add(mesh(CYL,c,.13*s,.012*s,.13*s,0,.052*s,0));
+    for(let k=-2;k<=2;k++){g.add(mesh(BOX,crust,.26*s*Math.sqrt(1-(k/3)**2),.012*s,.022*s,0,.062*s,k*.05*s,false));g.add(mesh(BOX,crust,.022*s,.013*s,.26*s*Math.sqrt(1-(k/3)**2),k*.05*s,.064*s,0,false))}}
+  else if(r.shape==='cake'){g.add(mesh(CYL,c,.13*s,.1*s,.13*s,0,.05*s,0));g.add(mesh(CYL,white,.135*s,.02*s,.135*s,0,.105*s,0));g.add(mesh(SPH_LO,mat('#c8102a'),.025*s,.025*s,.025*s,0,.125*s,0,false))}
+  else if(r.shape==='muffin'){[[-.05,0],[.05,0],[0,.06]].forEach(([x,z])=>{g.add(mesh(TAPER,mat('#f4f1e8'),.04*s,.05*s,.04*s,x*s,.025*s,z*s));g.add(mesh(SPH_LO,mat(r.shape==='muffin'&&r.id==='macaroons'?'#f4f1e8':'#c88a4a'),.05*s,.04*s,.05*s,x*s,.06*s,z*s));
+    if(r.id==='muffins')for(let q=0;q<3;q++)g.add(mesh(SPH_LO,c,.012*s,.012*s,.012*s,x*s+(q-1)*.02*s,.09*s,z*s,false))})}
+  else if(r.shape==='bun'){[[-.05,0],[.05,0],[0,.06]].forEach(([x,z])=>{g.add(mesh(SPH_LO,mat('#c8823a'),.055*s,.04*s,.055*s,x*s,.035*s,z*s));g.add(mesh(SPH_LO,c,.04*s,.012*s,.04*s,x*s,.07*s,z*s,false))})}
+  else if(r.shape==='loaf'){g.add(mesh(SPH,c,.15*s,.07*s,.08*s,0,.06*s,0));for(let k=-1;k<=1;k++)g.add(mesh(BOX,mat('#7a4a1a'),.012*s,.01*s,.06*s,k*.06*s,.12*s,0,false))}
+  return g}
+// ---- the cottage (x -16..-10, z -11..-6), door in the east wall facing the greenhouse ----
+const HOUSE={x0:-16,x1:-10,z0:-11,z1:-6,door:[-9.1,-7.9]};
+const houseG=new THREE.Group(),roofG=new THREE.Group();scene.add(houseG);scene.add(roofG);
+const wallM=new THREE.MeshStandardMaterial({color:C('#f3e6cc'),roughness:.85,transparent:true,opacity:1});
+const beamM=new THREE.MeshStandardMaterial({color:C('#7a5230'),roughness:.8,transparent:true,opacity:1});
+const fadeMats=[wallM,beamM];
+{const H=2.8,T=.16,h=(o)=>houseG.add(o),wood=mat('#8e6440'),floorM=mat('#c8955c',{roughness:.7});
+ const wall=(x0,z0,x1,z1)=>{const L=Math.hypot(x1-x0,z1-z0),m=mesh(BOX,wallM,x1!==x0?L+T:T,H,z1!==z0?L+T:T,(x0+x1)/2,H/2,(z0+z1)/2);h(m);addCol(Math.min(x0,x1)-T/2,Math.max(x0,x1)+T/2,Math.min(z0,z1)-T/2,Math.max(z0,z1)+T/2,'house')};
+ h(mesh(BOX,floorM,6,.08,5,-13,.04,-8.5,false));
+ for(let k=0;k<12;k++)h(mesh(BOX,mat(k%2?'#b8844e':'#c8955c'),6,.081,.4,-13,.041,-10.8+k*.42,false));
+ h(mesh(BOX,mat('#9a9488'),6.4,.1,5.4,-13,0,-8.5,false));
+ wall(-16,-11,-16,-6);wall(-16,-6,-10,-6);wall(-16,-11,-10,-11);
+ wall(-10,-11,-10,HOUSE.door[0]);wall(-10,HOUSE.door[1],-10,-6);
+ h(mesh(BOX,wallM,T,H-2.1,1.2+T,-10,2.1+(H-2.1)/2,-8.5));
+ // timber beams on the outside
+ [[-16,-11],[-16,-6],[-10,-11],[-10,-6],[-13,-6],[-13,-11]].forEach(([x,z])=>h(mesh(BOX,beamM,.2,H,.2,x,H/2,z)));
+ h(mesh(BOX,beamM,6.3,.18,.2,-13,H-.05,-6));h(mesh(BOX,beamM,6.3,.18,.2,-13,H-.05,-11));h(mesh(BOX,beamM,.2,.18,5.3,-16,H-.05,-8.5));h(mesh(BOX,beamM,.2,.18,5.3,-10,H-.05,-8.5));
+ // door (swung open) and frame
+ const door=mesh(BOX,wood,.08,2.05,1.15,-9.55,1.03,-7.4);door.rotation.y=-1.3;h(door);h(mesh(SPH_LO,mat('#c9a24a',{metalness:.6}),.04,.04,.04,-9.2,1.0,-7.05,false));
+ h(mesh(BOX,beamM,.24,.14,1.4,-10,2.12,-8.5));h(mesh(BOX,mat('#6a8a4a'),1.1,.03,.7,-9.4,.02,-8.5,false));
+ // windows (glass + frames + flower boxes)
+ const glassM=new THREE.MeshStandardMaterial({color:C('#bfe8f0'),roughness:.05,transparent:true,opacity:.45,side:THREE.DoubleSide});
+ [[-14.4,-6,0],[-11.6,-6,0],[-13,-11,0],[-16,-8.5,1]].forEach(([x,z,side])=>{const g=new THREE.Group();g.position.set(x,1.55,z);if(side)g.rotation.y=Math.PI/2;
+   g.add(mesh(BOX,glassM,1,.8,.02,0,0,0,false));g.add(mesh(BOX,wood,1.12,.08,.22,0,.44,0,false));g.add(mesh(BOX,wood,1.12,.08,.22,0,-.44,0,false));g.add(mesh(BOX,wood,.06,.88,.2,0,0,0,false));
+   g.add(mesh(BOX,wood,.08,.88,.22,-.56,0,0,false));g.add(mesh(BOX,wood,.08,.88,.22,.56,0,0,false));
+   const box=new THREE.Group();box.position.set(0,-.58,side?-.2:.2);if(z===-11)box.position.z=-.2;box.add(mesh(BOX,mat('#a8743f'),1,.16,.18,0,0,0,false));
+   for(let k=0;k<6;k++)box.add(mesh(SPH_LO,mat(['#ff5d82','#ffd34d','#ffffff','#b46cff'][k%4]),.06,.06,.06,-.4+k*.16,.12,0,false));g.add(box);houseG.add(g)});
+ // roof: two slopes, gables, chimney (hidden while you're inside)
+ const roofM=mat('#b0503a',{roughness:.7}),rl=Math.hypot(2.9,1.5);
+ [[-1,1],[1,-1]].forEach(([sd])=>{const r=mesh(BOX,roofM,6.8,.14,rl+.3,-13,H+.75,-8.5+sd*1.35);r.rotation.x=sd*Math.atan2(1.5,2.9);roofG.add(r)});
+ for(let k=0;k<5;k++)[[-1],[1]].forEach(([sd])=>{const r=mesh(BOX,mat('#9a4030'),6.82,.03,.08,-13,H+.08+k*.33,-8.5+sd*(2.75-k*.62));r.rotation.x=sd*Math.atan2(1.5,2.9);roofG.add(r)});
+ const tri=new THREE.Shape();tri.moveTo(-2.6,0);tri.lineTo(2.6,0);tri.lineTo(0,1.5);tri.lineTo(-2.6,0);
+ [-16,-10].forEach(x=>{const m=new THREE.Mesh(new THREE.ShapeGeometry(tri),new THREE.MeshStandardMaterial({color:C('#f3e6cc'),side:THREE.DoubleSide}));m.position.set(x,H,-8.5);m.rotation.y=Math.PI/2;roofG.add(m)});
+ roofG.add(mesh(BOX,mat('#8a6a5a'),.5,1.2,.5,-14.6,H+1.4,-7.4));roofG.add(mesh(BOX,mat('#6a4a3a'),.6,.12,.6,-14.6,H+2.02,-7.4));
+ // ---- kitchen along the west wall ----
+ const cab=mat('#e8dcc4'),top=mat('#7a8a8a',{roughness:.4}),steel=mat('#c8ccd0',{metalness:.5,roughness:.35}),dark=mat('#2a2a2e');
+ h(mesh(BOX,cab,.62,.88,4.4,-15.55,.44,-8.5));h(mesh(BOX,top,.7,.06,4.5,-15.55,.91,-8.5));addCol(-15.95,-15.2,-10.75,-6.25,'house');
+ for(let k=0;k<5;k++)h(mesh(BOX,mat('#d8c8a8'),.02,.7,.75,-15.23,.44,-10.35+k*.9,false));
+ // stove (z -9.6): cooktop, burners, pot
+ h(mesh(BOX,dark,.64,.04,.8,-15.55,.95,-9.6));[[-.15,-.18],[.12,-.18],[-.15,.18],[.12,.18]].forEach(([a,b])=>h(mesh(CYL,mat('#555'),.1,.01,.1,-15.55+a,.975,-9.6+b,false)));
+ const pot=new THREE.Group();pot.position.set(-15.6,.98,-9.78);pot.add(mesh(CYL,steel,.16,.22,.16,0,.11,0));const lid=mesh(CYL,steel,.17,.025,.17,0,.235,0);pot.add(lid);pot.add(mesh(SPH_LO,dark,.03,.03,.03,0,.26,0,false));h(pot);
+ [0,1,2].forEach(k=>h(mesh(CYL,dark,.025,.03,.025,-15.23,.75,-9.85+k*.22,false)));
+ // oven (z -7.4): built in under the counter, with a window that glows while baking
+ const ovenGlow=new THREE.MeshStandardMaterial({color:C('#3a2a20'),emissive:C('#ff7a1a'),emissiveIntensity:0,roughness:.3});
+ h(mesh(BOX,dark,.05,.66,.74,-15.22,.44,-7.4));h(mesh(BOX,ovenGlow,.02,.36,.5,-15.19,.47,-7.4,false));h(mesh(BOX,steel,.04,.04,.5,-15.17,.72,-7.4,false));
+ h(mesh(BOX,mat('#c88a4a'),.5,.02,.6,-15.55,.95,-7.4,false));
+ // sink (z -8.5) and shelves of jars above the counter
+ h(mesh(BOX,steel,.5,.06,.6,-15.55,.93,-8.5,false));const tap=mesh(CYL,steel,.02,.3,.02,-15.78,1.08,-8.5,false);h(tap);const sp=mesh(CYL,steel,.018,.2,.018,-15.7,1.22,-8.5,false);sp.rotation.z=Math.PI/2;h(sp);
+ [1.55,2.05].forEach((y,row)=>{h(mesh(BOX,wood,.32,.04,4.2,-15.78,y,-8.5,false));for(let k=0;k<9;k++){const col=['#e8d07a','#d81a3a','#3a4ad8','#ffb07a','#a80a24','#6a2a8a','#f2a830','#f6e05a','#4a9a3a'][(k+row*4)%9];
+   h(mesh(CYL,mat(col,{roughness:.2}),.06,.14,.06,-15.78,y+.09,-10.4+k*.47,false));h(mesh(CYL,mat('#d8263a'),.064,.02,.064,-15.78,y+.17,-10.4+k*.47,false))}});
+ // a cozy room: dining table, chairs, rug, sofa, lamp, plant
+ h(mesh(CYL,mat('#c8506a',{roughness:.95}),1.3,.02,.9,-12.8,.09,-8.6,false));
+ h(mesh(BOX,wood,1.3,.06,.85,-12.8,.78,-8.8));[[-.55,-.35],[.55,-.35],[-.55,.35],[.55,.35]].forEach(([a,b])=>h(mesh(BOX,wood,.06,.75,.06,-12.8+a,.38,-8.8+b)));addCol(-13.5,-12.1,-9.25,-8.35,'house');
+ [[-12.8,-9.55,0],[-12.8,-8.05,Math.PI]].forEach(([x,z,ry])=>{const c=new THREE.Group();c.position.set(x,0,z);c.rotation.y=ry;c.add(mesh(BOX,wood,.42,.05,.42,0,.45,0));c.add(mesh(BOX,wood,.42,.5,.05,0,.72,-.2));
+   [[-.18,-.18],[.18,-.18],[-.18,.18],[.18,.18]].forEach(([a,b])=>c.add(mesh(BOX,wood,.04,.45,.04,a,.22,b)));h(c)});
+ h(mesh(CYL,mat('#f4f1e8'),.06,.02,.06,-12.8,.82,-8.8,false));h(mesh(TAPER,mat('#6f8f9e'),.07,.12,.07,-12.8,.88,-8.8,false));
+ for(let k=0;k<3;k++)h(mesh(SPH_LO,mat(['#ff5d82','#ffd34d','#ffffff'][k]),.05,.05,.05,-12.8+(k-1)*.05,.98,-8.8,false));
+ h(mesh(BOX,mat('#4f8a7a'),2,.45,.75,-11.6,.3,-6.55));h(mesh(BOX,mat('#4f8a7a'),2,.6,.18,-11.6,.7,-6.25));[-1,1].forEach(sd=>h(mesh(BOX,mat('#3f7a6a'),.18,.6,.75,-11.6+sd*.95,.42,-6.55)));
+ [[-12.2,'#ffd34d'],[-11,'#ff8ab0']].forEach(([x,c])=>h(mesh(BOX,mat(c),.4,.36,.12,x,.68,-6.42,false)));addCol(-12.7,-10.5,-6.95,-6.1,'house');
+ h(mesh(TAPER,mat('#c96a3e'),.22,.35,.22,-10.5,.18,-10.5));h(mesh(SPH,mat('#3f8a3a'),.32,.42,.32,-10.5,.6,-10.5));addCol(-10.8,-10.2,-10.8,-10.2,'house');
+ const lampG=new THREE.Group();lampG.position.set(-12.8,2.3,-8.8);lampG.add(mesh(CYL,dark,.005,.5,.005,0,.25,0,false));lampG.add(mesh(CONE,mat('#2e7a4b'),.22,.2,.22,0,0,0,false));
+ lampG.add(mesh(SPH_LO,mat('#fff3c0',{emissive:C('#ffd890'),emissiveIntensity:1}),.07,.07,.07,0,-.08,0,false));h(lampG);
+ const homeLight=new THREE.PointLight(C('#ffd8a0'),.8,8,1.4);homeLight.position.set(-12.8,2.1,-8.8);h(homeLight);
+ // path from the Seed Shop down to the door, and the yard
+ scene.add(mesh(BOX,gravel,1.2,.04,16.8,-7.4,.022,-5.0,false));scene.add(mesh(BOX,gravel,2.6,.04,1.1,-8.6,.023,-8.5,false));
+ houseG.userData={pot,lid,ovenGlow}}
+// ---- bakery table in the yard, south-east of the cottage ----
+const BAKERY={x:-8.25,z:-12.6,cust:[-7.25,-12.6],stand:[-9.15,-12.6]};
+const bakeryG=new THREE.Group();bakeryG.position.set(BAKERY.x,0,BAKERY.z);scene.add(bakeryG);
+const tableItems=new THREE.Group();bakeryG.add(tableItems);
+{const wood=mat('#a8743f'),cloth=mat('#ffffff'),red=mat('#d8263a');
+ bakeryG.add(mesh(BOX,wood,.8,.06,2.2,0,.82,0));[[-.32,-.95],[.32,-.95],[-.32,.95],[.32,.95]].forEach(([a,b])=>bakeryG.add(mesh(BOX,wood,.07,.8,.07,a,.4,b)));
+ for(let k=0;k<8;k++)bakeryG.add(mesh(BOX,k%2?cloth:red,.82,.012,.275,0,.86,-.96+k*.275,false));
+ for(let k=0;k<8;k++)bakeryG.add(mesh(BOX,k%2?cloth:red,.012,.25,.275,.41,.74,-.96+k*.275,false));
+ [-1,1].forEach(sd=>bakeryG.add(mesh(BOX,wood,.06,1.4,.06,-.3,1.5,sd*1.05)));
+ const sg=new THREE.Mesh(new THREE.PlaneGeometry(1.9,.5),new THREE.MeshBasicMaterial({map:signTex('BAKERY','#ffe9a0','#7a3a1a'),side:THREE.DoubleSide}));sg.position.set(-.3,2.05,0);sg.rotation.y=Math.PI/2;bakeryG.add(sg);
+ addCol(BAKERY.x-.42,BAKERY.x+.42,BAKERY.z-1.12,BAKERY.z+1.12,'bakery')}
+const kitchenIcon={stove:new THREE.Sprite(starMat),oven:new THREE.Sprite(starMat)};
+Object.entries(kitchenIcon).forEach(([k,sp])=>{sp.scale.set(.45,.45,.45);sp.renderOrder=10;sp.visible=false;sp.position.set(-15.45,1.9,k==='stove'?-9.6:-7.4);scene.add(sp)});
+const STATIONS={stove:[-14.8,-9.6],oven:[-14.8,-7.4]};
+const insideHouse=()=>{const p=player.position;return p.x>HOUSE.x0&&p.x<HOUSE.x1&&p.z>HOUSE.z0&&p.z<HOUSE.z1};
+function syncTable(){while(tableItems.children.length)tableItems.remove(tableItems.children[0]);
+  S.table.slice(0,TABLE_MAX).forEach((id,k)=>{if(!RECIPE[id])return;const m=makeGood(id,1.15);m.position.set(k%2?.17:-.17,.87,-.82+Math.floor(k/2)*.5);m.rotation.y=k;tableItems.add(m)})}
+// ---- cooking ----
+let kitchenRefresh=0;
+function updateKitchen(dt,now){const hu=houseG.userData;
+  for(const st of['stove','oven']){const job=S.kitchen[st],sp=kitchenIcon[st];
+    if(job&&!job.done){job.t+=dt;if(job.t>=RECIPE[job.r].time){job.done=true;blip(990,.12);if(insideHouse())toast(`${RECIPE[job.r].name} is ready`)}}
+    sp.visible=!!(job&&job.done);if(sp.visible)sp.position.y=1.9+Math.sin(now/300)*.05;
+    if(st==='stove'){const cooking=job&&!job.done;hu.lid.position.y=.235+(cooking?Math.abs(Math.sin(now/120))*.025:0);
+      if(cooking&&Math.random()<dt*8)sparkle.emit(-15.6+(Math.random()-.5)*.1,1.3,-9.78,(Math.random()-.5)*.1,.4,(Math.random()-.5)*.1,1.2,-.2)}
+    else hu.ovenGlow.emissiveIntensity=job&&!job.done?.8+Math.sin(now/200)*.2:0}
+  if(panelKind==='kitchen'){kitchenRefresh-=dt;if(kitchenRefresh<=0){kitchenRefresh=1;openKitchen(kitchenAt)}}}
+let kitchenAt='stove';
+function openKitchen(st){
+  if(document.pointerLockElement)try{document.exitPointerLock()}catch(_){}
+  kitchenAt=st;panelKind='kitchen';panel.hidden=false;const job=S.kitchen[st],other=st==='stove'?'oven':'stove';
+  const need=r=>Object.entries(r.needs).map(([t,n])=>{const have=S.flowers[t]||0;return`<span class="${have>=n?'ok':'miss'}">${n} ${plural(itemOf(t),n)} (${have})</span>`}).join(' · ');
+  const status=job?(job.done?`<div class="item"><span class="dot" style="background:${RECIPE[job.r].color}"></span><div><b>${RECIPE[job.r].name} is ready</b><small>Collect it to put it in your pantry</small></div><button class="btn" data-kcollect="${st}">Collect</button></div>`
+      :`<div class="item"><span class="dot" style="background:${RECIPE[job.r].color}"></span><div><b>Cooking ${RECIPE[job.r].name}</b><small>${fmtTime(Math.ceil(RECIPE[job.r].time-job.t))} left</small><div class="kbar"><i style="width:${Math.min(100,job.t/RECIPE[job.r].time*100).toFixed(0)}%"></i></div></div><span class="owned">${st==='stove'?'Simmering':'Baking'}</span></div>`)
+    :`<div class="empty">The ${st} is free. Pick something to make.</div>`;
+  const rows=RECIPES.filter(r=>r.station===st).map(r=>{const lock=recipeLock(r);
+    const right=lock?`<span class="lock">${lock}</span>`:`<button class="btn" data-cook="${r.id}" ${job||!canCook(r)?'disabled':''}>${st==='stove'?'Cook':'Bake'}</button>`;
+    return`<div class="item${lock?' locked':''}"><span class="dot" style="background:${r.color}"></span><div><b>${r.name}</b><small class="needs">${need(r)}</small><small>${fmtTime(r.time)} · sells $${r.sell} at the bakery · +${r.xp} XP · ${S.goods[r.id]||0} in pantry</small></div>${right}</div>`}).join('');
+  card.innerHTML=`<div class="cardhead"><h2>${st==='stove'?'Stove':'Oven'}</h2><button class="btn alt" data-kswitch="${other}">${other==='oven'?'Oven':'Stove'} →</button></div>
+  <p>${st==='stove'?'Simmer fruit and honey into jams, preserves and drinks.':'Bake fruit and honey into pies, cakes and treats.'} Ingredients come from your basket; the number in brackets is how many you have.</p>
+  ${status}<h3>Recipes</h3>${rows}<button class="btn alt big" data-close>Back to the kitchen</button>`}
+function cookRecipe(id){const r=RECIPE[id];if(!r||S.kitchen[r.station]||recipeLock(r)||!canCook(r))return;
+  for(const t in r.needs)S.flowers[t]-=r.needs[t];S.kitchen[r.station]={r:id,t:0,done:false};blip(440,.1,'triangle');toast(`${r.station==='stove'?'Cooking':'Baking'} ${r.name}`);renderHUD();save()}
+function collectCooked(st){const job=S.kitchen[st];if(!job||!job.done)return;const r=RECIPE[job.r];S.goods[r.id]=(S.goods[r.id]||0)+1;S.kitchen[st]=null;
+  chime();toast(`+1 ${r.name} · +${r.xp} XP`);addXP(r.xp);renderHUD();save()}
+// ---- bakery table: put goods out, bakery customers buy them ----
+function openBakery(){
+  if(document.pointerLockElement)try{document.exitPointerLock()}catch(_){}
+  panelKind='bakery';panel.hidden=false;const pantry=RECIPES.filter(r=>(S.goods[r.id]||0)>0),full=S.table.length>=TABLE_MAX;
+  const onTable=S.table.length?S.table.map((id,k)=>`<div class="item"><span class="dot" style="background:${RECIPE[id].color}"></span><div><b>${RECIPE[id].name}</b><small>Sells for $${RECIPE[id].sell}</small></div><button class="btn alt" data-takeback="${k}">Take back</button></div>`).join('')
+    :`<div class="empty">Nothing on the table yet. Put out goods from your pantry and bakery customers will come buy them.</div>`;
+  const stock=pantry.length?pantry.map(r=>`<div class="item"><span class="dot" style="background:${r.color}"></span><div><b>${r.name}</b><small>${S.goods[r.id]} in pantry · $${r.sell} each</small></div><div class="btns"><button class="btn" data-putout="${r.id}" ${full?'disabled':''}>Put out</button><button class="btn alt" data-putall="${r.id}" ${full?'disabled':''}>All</button></div></div>`).join('')
+    :`<div class="empty">Your pantry is empty. Cook something in the cottage kitchen.</div>`;
+  card.innerHTML=`<div class="cardhead"><h2>Bakery Table</h2><span class="pill"><span class="coin">$</span>${S.coins}</span></div>
+  <h3>On the table · ${S.table.length} of ${TABLE_MAX}</h3>${onTable}<h3>Your pantry</h3>${stock}<button class="btn alt big" data-close>Back to the garden</button>`}
+const bakeCust=[];let bakeTimer=6;
+const BK_PATH=[[-14.5,2.6],[-7.25,2.6],BAKERY.cust];
+function updateBakery(dt,now){
+  if(S.table.length&&bakeCust.length<1){bakeTimer-=dt;if(bakeTimer<=0){bakeTimer=9+Math.random()*7;
+    const m=makePerson({shirt:pick(SHIRTS),pants:pick(PANTS),skin:pick(SKINS),hair:pick(HAIRC),hairStyle:pick(['short','bun','long','pony','curly'])});
+    m.position.set(BK_PATH[0][0],0,BK_PATH[0][1]);scene.add(m);bakeCust.push({m,path:BK_PATH.slice(1).map(p=>p.slice()),state:'in',wait:0})}}
+  for(let i=bakeCust.length-1;i>=0;i--){const c=bakeCust[i],p=c.m.position;let moving=false;
+    if(c.path.length){const[tx,tz]=c.path[0],dx=tx-p.x,dz=tz-p.z,d=Math.hypot(dx,dz);
+      if(d<.06){p.x=tx;p.z=tz;c.path.shift()}else{const sp=Math.min(d,3.4*dt);p.x+=dx/d*sp;p.z+=dz/d*sp;moving=true;let dr=Math.atan2(dx,dz)-c.m.rotation.y;dr=Math.atan2(Math.sin(dr),Math.cos(dr));c.m.rotation.y+=dr*Math.min(1,dt*10)}}
+    else if(c.state==='in'){c.state='shop';c.wait=1.4;let dr=-Math.PI/2-c.m.rotation.y;c.m.rotation.y+=Math.atan2(Math.sin(dr),Math.cos(dr))}
+    else if(c.state==='shop'){c.wait-=dt;c.m.userData.head.rotation.y=Math.sin(now/300)*.4;
+      if(c.wait<=0){c.m.userData.head.rotation.y=0;
+        if(S.table.length){const k=Math.floor(Math.random()*S.table.length),id=S.table.splice(k,1)[0],r=RECIPE[id],pay=r.sell+Math.round(r.sell*Math.random()*.2);
+          S.coins+=pay;addXP(Math.ceil(r.sell/20));syncTable();renderHUD();save();
+          const near=Math.hypot(player.position.x-BAKERY.x,player.position.z-BAKERY.z)<12;near?chime():blip(1175,.05);toast(`Bakery sold ${r.name} · +$${pay}`);
+          const g=makeGood(id,.8);g.rotation.x=Math.PI;c.m.userData.arms[1].userData.hold.add(g);c.m.userData.arms[1].rotation.x=-.9;c.m.userData.armBusy=true;
+          for(let q=0;q<10;q++)hearts.emit(p.x,2.1,p.z,(Math.random()-.5)*.4,.8,(Math.random()-.5)*.4,1.2,.4);
+          if(panelKind==='bakery')openBakery()}
+        c.state='out';c.path=[[-7.25,2.6],[-17.5,2.6]]}}
+    else if(c.state==='out'){scene.remove(c.m);bakeCust.splice(i,1);continue}
+    animPerson(c.m,dt,moving,.9)}}
+// fade the walls and lift the roof while you're inside (third person) so you can see in
+let houseFade=1;
+function updateHouseView(dt){const inside=insideHouse()&&view!=='first',want=inside?.22:1;houseFade+=(want-houseFade)*Math.min(1,dt*6);
+  fadeMats.forEach(m=>{m.opacity=houseFade;m.depthWrite=houseFade>.95});roofG.visible=houseFade>.6}
+
 /* ---------- HUD ---------- */
 const $=id=>document.getElementById(id);
 const coinsEl=$('coins'),promptEl=$('prompt'),actBtn=$('actBtn'),toastEl=$('toast');
@@ -1621,6 +1811,9 @@ function openInventory(){
   <h3>Basket · sell these at the Flower Shop</h3>
   ${basket.length?`<div class="invgrid">${basket.map(t=>`<div class="invtile static"><span class="dot" style="background:${SEEDS[t].petal}"></span><span><b>${plural(itemOf(t),S.flowers[t])}</b><small>×${S.flowers[t]}</small></span></div>`).join('')}</div>`
     :`<div class="empty">Your basket is empty. Harvest ripe plants to fill it.</div>`}
+  <h3>Pantry · sell these at the bakery table</h3>
+  ${RECIPES.some(r=>S.goods[r.id]>0)?`<div class="invgrid">${RECIPES.filter(r=>S.goods[r.id]>0).map(r=>`<div class="invtile static"><span class="dot" style="background:${r.color}"></span><span><b>${r.name}</b><small>×${S.goods[r.id]}</small></span></div>`).join('')}</div>`
+    :`<div class="empty">Nothing cooked yet. Use the stove and oven in the cottage kitchen.</div>`}
   <button class="btn alt big" data-close>${touchy?'Close':'Close (I)'}</button>`;
 }
 let toastT;
@@ -1742,7 +1935,7 @@ function resetGarden(){
   ents.forEach(e=>scene.remove(e.m));ents.length=0;
   [seedClerk,flowerClerk].forEach(c=>{c.jobs.length=0;c.job=null;c.t=-1;if(c.item){c.item.parent&&c.item.parent.remove(c.item);c.item=null}});
   S.customers.push(newCustomer());S.customers.forEach(o=>spawnEnt(o,true));
-  despawnWorker();fitPlots();S.plots.forEach((_,i)=>syncPlot(i));S.trees.forEach((_,i)=>syncTree(i));syncUpgrades();
+  despawnWorker();bakeCust.forEach(c=>scene.remove(c.m));bakeCust.length=0;syncTable();fitPlots();S.plots.forEach((_,i)=>syncPlot(i));S.trees.forEach((_,i)=>syncTree(i));syncUpgrades();
   player.position.set(0,0,-1.2);yaw=0;setView(keepView);renderHUD();save();
   confirmReset=false;closePanel();toast('Fresh garden started','',1800);
 }
@@ -1799,6 +1992,12 @@ function openFlowerShop(){freeMouse();
 }
 card.addEventListener('click',e=>{
   const b=e.target.closest('button');if(!b||b.disabled)return;
+  if(b.dataset.cook){cookRecipe(b.dataset.cook);openKitchen(kitchenAt);return}
+  if(b.dataset.kcollect){collectCooked(b.dataset.kcollect);openKitchen(kitchenAt);return}
+  if(b.dataset.kswitch){openKitchen(b.dataset.kswitch);blip(520,.04);return}
+  if(b.dataset.putout||b.dataset.putall){const id=b.dataset.putout||b.dataset.putall;let n=b.dataset.putall?S.goods[id]:1;
+    while(n-->0&&S.goods[id]>0&&S.table.length<TABLE_MAX){S.goods[id]--;S.table.push(id)}syncTable();blip(600,.05);save();openBakery();return}
+  if(b.dataset.takeback!==undefined){const id=S.table.splice(+b.dataset.takeback,1)[0];if(id)S.goods[id]=(S.goods[id]||0)+1;syncTable();save();openBakery();return}
   if(b.dataset.pick){S.sel=b.dataset.pick;blip(560,.05);closePanel();renderHUD();toast(`${SEEDS[S.sel].name} selected`);if(e.detail>0)grabMouse();return}
   if(b.hasAttribute('data-close')){closePanel();if(e.detail>0)grabMouse();return}
   if(b.hasAttribute('data-resume')){resume(e.detail>0);return}
@@ -1838,6 +2037,8 @@ function findTarget(){
   const x=player.position.x,z=player.position.z;
   if(Math.hypot(x-SEED_SPOT.x,z-SEED_SPOT.y)<1.9)return{k:'seed'};
   if(Math.hypot(x-FLOWER_SPOT.x,z-FLOWER_SPOT.y)<1.9)return{k:'flower'};
+  for(const st in STATIONS){const[sx,sz]=STATIONS[st];if(Math.hypot(x-sx,z-sz)<.95)return{k:st}}
+  if(Math.hypot(x-BAKERY.x,z-BAKERY.z)<1.75)return{k:'bakery'};
   if(S.up.beehives){let hi=-1,hd=1.45;HIVES.forEach(([hx,hz],i)=>{const d=Math.hypot(x-hx,z-hz);if(d<hd){hd=d;hi=i}});if(hi>=0)return{k:'hive',i:hi}}
   {let bi=-1,bdt=1.55;orch.forEach((O,i)=>{const d=Math.hypot(x-O.x,z-O.z);if(d<bdt){bdt=d;bi=i}});if(bi>=0)return{k:'tree',i:bi}}
   let best=null,bd=view==='first'?1.4:1;
@@ -1851,6 +2052,11 @@ const STAGE=['sprouting','leafing out','budding'];
 function describe(){
   if(!target)return null;
   if(target.k==='seed')return{text:'Seed Shop',btn:'Shop'};
+  if(target.k==='stove'||target.k==='oven'){const st=target.k,job=S.kitchen[st],nm=st==='stove'?'Stove':'Oven';
+    if(job&&job.done)return{text:`${nm} · ${RECIPE[job.r].name} is ready`,btn:'Collect'};
+    if(job)return{text:`${nm} · ${st==='stove'?'cooking':'baking'} ${RECIPE[job.r].name} · ${Math.floor(job.t/RECIPE[job.r].time*100)}%`,btn:nm};
+    return{text:`${nm} · ${st==='stove'?'make jams, preserves and drinks':'bake pies, cakes and treats'}`,btn:st==='stove'?'Cook':'Bake'}}
+  if(target.k==='bakery')return{text:`Bakery table · ${S.table.length} ${plural('item',S.table.length)} out for sale`,btn:'Bakery'};
   if(target.k==='hive'){const v=S.honey[target.i]||0,jars=Math.floor(v);
     return jars>=1?{text:`Beehive · ${jars} ${plural('jar',jars)} of honey${jars>=HONEY_MAX?' (full)':''}`,btn:'Collect'}:{text:`Beehive · bees are making honey · ${Math.floor((v%1)*100)}%`,btn:'Wait',off:true}}
   if(target.k==='flower'){const n=S.customers.length;return{text:`Flower Shop · ${n} customer${n===1?'':'s'} waiting`,btn:'Sell'}}
@@ -1876,6 +2082,8 @@ function act(){
   if(target.k==='flower'){openFlowerShop();blip(500,.06);return}
   if(target.k==='tree'){actTree(target.i);return}
   if(target.k==='hive'){collectHoney(target.i);return}
+  if(target.k==='stove'||target.k==='oven'){const job=S.kitchen[target.k];if(job&&job.done){collectCooked(target.k);return}openKitchen(target.k);blip(500,.06);return}
+  if(target.k==='bakery'){openBakery();blip(500,.06);return}
   const i=target.i,s=S.plots[i];
   if(!s){const t=pickSeed();if(!t){toast('Buy seeds at the Seed Shop');return}S.seeds[t]--;S.plots[i]={t,st:0,pr:0,wet:!!S.up.drip};S.memo[i]=t;blip(330,.1,'triangle');toast(`Planted ${SEEDS[t].name}`)}
   else if(s.st>=3){S.flowers[s.t]+=plotYield();S.plots[i]=null;chime();toast(`+${plotYield()} ${plural(SEEDS[s.t].name,plotYield())} · +${SEEDS[s.t].xp} XP`);addXP(SEEDS[s.t].xp);
@@ -2001,7 +2209,7 @@ camera.position.copy(player.position).add(camOff);
 
 /* ---------- boot ---------- */
 if(!S.customers.length)S.customers.push(newCustomer());
-S.plots.forEach((_,i)=>syncPlot(i));S.trees.forEach((_,i)=>syncTree(i));S.customers.forEach(o=>spawnEnt(o,true));syncUpgrades();renderHUD();spawnFly();setView(view);
+S.plots.forEach((_,i)=>syncPlot(i));S.trees.forEach((_,i)=>syncTree(i));syncTable();S.customers.forEach(o=>spawnEnt(o,true));syncUpgrades();renderHUD();spawnFly();setView(view);
 let started=false,custTimer=8,saveTimer=0,last=performance.now(),lastPrompt='',sprayT=0;
 $('startBtn').onclick=e=>{started=true;$('intro').hidden=true;S.seen=true;blip(660,.08);save();if(e.detail>0)grabMouse()};
 if(S.seen){$('intro').hidden=true}
@@ -2056,7 +2264,7 @@ function tick(now){
   // customers
   if(started&&S.customers.length<3){custTimer-=dt;if(custTimer<=0){const o=newCustomer();S.customers.push(o);spawnEnt(o,false);custTimer=S.manager&&S.managerOn?6+Math.random()*5:10+Math.random()*8;if(panelKind==='flower')openFlowerShop()}}
   {const gl=.45+.3*Math.sin(now/650);for(const m of GLOWS)m.emissiveIntensity=gl}
-  updateEnts(dt,now);updateFlies(dt,now);updateBees(dt,now);updateHoney(dt,now);edgeTurn(dt);if(started){updateWorker(dt);updateManager(dt)}biteCD-=dt;eatToastT-=dt;
+  updateEnts(dt,now);updateFlies(dt,now);updateBees(dt,now);updateHoney(dt,now);updateKitchen(dt,now);updateBakery(dt,now);updateHouseView(dt);edgeTurn(dt);if(started){updateWorker(dt);updateManager(dt)}biteCD-=dt;eatToastT-=dt;
   {const want=S.manager&&mgr.m?mgr.m:florist;if(flowerClerk.p!==want){flowerClerk.p.position.z=CLERK_HOME;flowerClerk.p.rotation.y=0;flowerClerk.p.userData.armBusy=false;if(flowerClerk.item){flowerClerk.item.parent&&flowerClerk.item.parent.remove(flowerClerk.item);flowerClerk.item=null;flowerClerk.t=-1;if(flowerClerk.job){flowerClerk.jobs.unshift(flowerClerk.job);flowerClerk.job=null}}flowerClerk.p=want}}
   updateClerk(seedClerk,dt,now);updateClerk(flowerClerk,dt,now);
   // rescue so a player never gets stuck broke
